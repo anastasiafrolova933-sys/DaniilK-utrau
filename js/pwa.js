@@ -49,7 +49,8 @@
 
   function getVapid() {
     if (vapidKey) return Promise.resolve(vapidKey);
-    return resolveServer().then(function () { return fetch(api('/api/push/vapid'), { cache: 'no-store' }); })
+    // force=true: URL туннеля мог смениться при перезапуске сервера — берём свежий
+    return resolveServer(true).then(function () { return fetch(api('/api/push/vapid'), { cache: 'no-store' }); })
       .then(function (r) { return r.json(); })
       .then(function (j) { vapidKey = j.public_key; return vapidKey; });
   }
@@ -98,7 +99,9 @@
   }
 
   function testPush() {
-    return navigator.serviceWorker.ready.then(function (reg) {
+    return resolveServer(true).then(function () {
+      return navigator.serviceWorker.ready;
+    }).then(function (reg) {
       return reg.pushManager.getSubscription();
     }).then(function (sub) {
       return fetch(api('/api/push/test'), {
