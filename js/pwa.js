@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://acknowledged-visit-incidence-earned.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://anthropology-practices-bacteria-radios.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
