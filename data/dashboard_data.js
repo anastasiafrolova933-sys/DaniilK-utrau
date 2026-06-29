@@ -1,5 +1,5 @@
-﻿// Auto-generated 2026-06-29 09:47 - do not edit
-window.UTRAU_DATA={generated:"2026-06-29 09:47",daily:[
+﻿// Auto-generated 2026-06-29 10:00 - do not edit
+window.UTRAU_DATA={generated:"2026-06-29 10:00",daily:[
   {"date":"2024-01-01","year":2024,"revenue":1662980,"roomNights":40,"guestArrivals":0,"roomArrivals":0,"adr":41574.5,"revpar":35382.55,"als":0,"totalRooms":52,"underRepair":5,"availRooms":47,"occupancy":85.11},
   {"date":"2024-01-02","year":2024,"revenue":272640,"roomNights":10,"guestArrivals":27,"roomArrivals":10,"adr":27264,"revpar":5926.96,"als":2,"totalRooms":52,"underRepair":6,"availRooms":46,"occupancy":21.74},
   {"date":"2024-01-03","year":2024,"revenue":430140,"roomNights":16,"guestArrivals":33,"roomArrivals":11,"adr":26883.75,"revpar":9558.67,"als":1.45,"totalRooms":52,"underRepair":7,"availRooms":45,"occupancy":35.56},
