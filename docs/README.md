@@ -165,16 +165,48 @@ git push
 
 ---
 
-### Автоматизация через Task Scheduler
+### Автоматизация через Task Scheduler — НАСТРОЕНА ✅
 
-Для ежедневного обновления без ручного запуска:
+Ежедневное обновление работает автоматически, как у портала Baden.
 
-1. Открыть `Планировщик заданий` → Создать задачу
-2. Триггер: Ежедневно в 09:00
-3. Действие: Запустить программу
-   - Программа: `powershell.exe`
-   - Аргументы: `-NoProfile -ExecutionPolicy Bypass -File "C:\путь\DaniilK-utrau\scripts\download.ps1"`
-4. После успешного запуска — данные обновятся, останется сделать `git push`
+**Задача:** `UtrauDashboardUpdate`
+**Расписание:** каждый день в 10:00
+**Что делает:** запускает `scripts/auto_update.ps1`, который:
+1. Скачивает свежие CSV из Google Sheets (`download.ps1`)
+2. Пересобирает `dashboard_data.js` (`build.ps1`)
+3. `git commit` + `git pull --rebase` + `git push` → сайт обновляется сам
+
+Ручной запуск меня (Claude) **не требуется** — всё крутится через Планировщик Windows.
+Git-push использует учётные данные из Windows Credential Manager (уже сохранены).
+
+**Лог:** `data/update.log` (последние запуски, успех/ошибки). В git не попадает.
+
+**Проверить статус задачи:**
+```powershell
+Get-ScheduledTaskInfo -TaskName "UtrauDashboardUpdate"   # LastTaskResult 0 = успех
+```
+
+**Запустить вручную сейчас:**
+```powershell
+Start-ScheduledTask -TaskName "UtrauDashboardUpdate"
+```
+
+**Изменить время запуска / частоту:**
+```powershell
+$t = New-ScheduledTaskTrigger -Daily -At 09:00
+Set-ScheduledTask -TaskName "UtrauDashboardUpdate" -Trigger $t
+```
+
+**Пересоздать задачу с нуля** (если перенесли проект в другую папку):
+```powershell
+$action = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\НОВЫЙ_ПУТЬ\DaniilK-utrau\scripts\auto_update.ps1"'
+$trigger = New-ScheduledTaskTrigger -Daily -At 10:00
+Register-ScheduledTask -TaskName "UtrauDashboardUpdate" -Action $action -Trigger $trigger -Force
+```
+
+> При переносе на другой ПК задачу нужно пересоздать (путь к скрипту меняется).
+> На исходном компьютере она уже работает.
 
 ---
 
