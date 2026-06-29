@@ -254,4 +254,72 @@ Register-ScheduledTask -TaskName "UtrauDashboardUpdate" -Action $action -Trigger
 
 ---
 
+### ИИ-чат + Push-уведомления + PWA
+
+В отчёты `finance.html` и `budget.html` встроен **ИИ-консультант** (кнопка ✦ внизу справа),
+а на всех страницах — кнопка **«🔔 Уведомления»** (вверху справа): установка на экран «Домой»
+и push-уведомления.
+
+**Архитектура (серверная, по образцу Baden — но полностью изолирована):**
+
+```
+backend/  (НЕ в git — секреты; лежит в папке, но не публикуется)
+├── chat_server.py     — aiohttp: /chat (Claude), /health, /api/push/*
+├── config.py          — отчёты + системные промпты (finance, budget)
+├── .env               — ANTHROPIC_API_KEY (копия ключа Баден), VAPID, INTERNAL_PUSH_TOKEN
+├── gen_vapid.py       — генерация VAPID-ключей (разово)
+├── gen_icons.py       — генерация PWA-иконок (разово)
+├── notify_push.py     — дайджест + аномалии → web-push (вызывается из auto_update.ps1)
+├── start_server.ps1   — cloudflared-туннель + сервер + публикация URL в api_url.json (+git push)
+├── watchdog.ps1       — каждые 15 мин: если /health лёг → запуск UtrauChatServer
+├── cloudflared.exe    — туннель
+└── subs.db            — push-подписки (SQLite)
+```
+
+**Фронт (в git, на сайте):** `chat-widget.js`, `js/pwa.js`, `notify.js`, `sw.js`,
+`manifest.json`, `api_url.json` (URL туннеля), иконки `icon-*.png`, `apple-touch-icon.png`.
+
+**Модели:** Haiku 4.5 (простые вопросы) / Sonnet 4.6 (аналитика — авто-переключение).
+Чат видит данные открытого отчёта через `window.__reportData()` на странице.
+
+**Порт:** 8768 (8765 = лояльность Баден, 8766 = чат Баден). Туннель cloudflared даёт
+динамический `https://*.trycloudflare.com`, который меняется при каждом перезапуске —
+поэтому `start_server.ps1` сам обновляет `api_url.json` и пушит на GitHub Pages.
+
+**Задачи Планировщика:**
+- `UtrauChatServer` — ежедневно 06:00 (свежий туннель к утру) + по требованию (`schtasks /run`)
+- `UtrauChatWatchdog` — каждые 15 мин, перезапускает сервер если `/health` недоступен
+  (так же поднимает после перезагрузки ПК)
+
+**Push-уведомления** (выбраны все три типа), шлёт `notify_push.py` после ежедневного
+обновления данных (вызов добавлен в `auto_update.ps1`):
+- 🌿 **дайджест** за день (выручка/загрузка + с начала месяца) — он же «данные обновлены»
+- ⚠️ **аномалия** (critical) — если загрузка дня отклонилась ≥35% от среднего за неделю
+
+**Включение push на iPhone** (iOS 16.4+): Safari → «Поделиться» → «На экран Домой» →
+открыть приложение с экрана → «🔔 Уведомления» → «Включить». Инструкция зашита в модалку.
+
+**Ручные команды:**
+```powershell
+# поднять/перезапустить сервер вручную
+schtasks /run /tn UtrauChatServer
+# проверить здоровье
+Invoke-RestMethod http://localhost:8768/health
+# текущий URL туннеля
+Get-Content api_url.json
+# проверить логи
+Get-Content backend\chat.log -Tail 20
+Get-Content backend\watchdog.log -Tail 20
+```
+
+**Перенос на другой ПК:** папка `backend/` НЕ в git (секреты) — копируется вместе с папкой
+проекта. На новом ПК: проверить путь к python в `start_server.ps1`/`watchdog.ps1`,
+пересоздать задачи `UtrauChatServer` (daily 06:00) и `UtrauChatWatchdog` (minute /mo 15),
+один раз запустить `schtasks /run /tn UtrauChatServer`.
+
+> ⚠️ ИИ-чат и push работают, только когда ПК включён и сервер запущен (как у Баден).
+> Ключ Anthropic — копия баденовского (общий биллинг), но сервер/данные/подписки Утрау отдельные.
+
+---
+
 *Создан: 2026-06-29 | Проект: ООО Бест Глэмп | Разработка: Claude Code*
