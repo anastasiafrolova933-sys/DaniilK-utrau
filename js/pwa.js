@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://minor-music-rome-your.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://subsection-policies-replace-arrival.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
