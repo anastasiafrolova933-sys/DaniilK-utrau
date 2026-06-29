@@ -28,12 +28,14 @@
   };
 
   // ── Сервер: api_url.json → window.__chatServerUrl → default ──
-  function resolveServer() {
+  // force=true перечитывает api_url.json (URL туннеля мог смениться при перезапуске сервера)
+  function resolveServer(force) {
     if (window.__chatServerUrl) { serverUrl = window.__chatServerUrl; return Promise.resolve(serverUrl); }
+    if (serverUrl && !force) return Promise.resolve(serverUrl);
     return fetch('api_url.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) { serverUrl = (j && j.url) ? j.url : DEFAULT_SERVER; })
-      .catch(function () { serverUrl = DEFAULT_SERVER; });
+      .then(function (j) { serverUrl = (j && j.url) ? j.url : DEFAULT_SERVER; return serverUrl; })
+      .catch(function () { serverUrl = DEFAULT_SERVER; return serverUrl; });
   }
 
   // ── Данные дашборда → текст для ИИ ──
@@ -158,27 +160,36 @@
     msgs.appendChild(t); msgs.scrollTop = msgs.scrollHeight; return t;
   }
 
+  function doFetch(q) {
+    return fetch((serverUrl || DEFAULT_SERVER).replace(/\/$/, '') + '/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id: REPORT_ID, question: q, data: extractData(),
+                             history: history.slice(-6, -1) })
+    });
+  }
+
   function send() {
     var q = input.value.trim();
     if (!q || sendBtn.disabled) return;
     input.value = ''; input.style.height = 'auto';
     addMessage('user', q); sendBtn.disabled = true;
     var typing = showTyping();
-    Promise.resolve(serverUrl || resolveServer()).then(function () {
-      return fetch((serverUrl || DEFAULT_SERVER).replace(/\/$/, '') + '/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: REPORT_ID, question: q, data: extractData(),
-                               history: history.slice(-6, -1) })
-      });
-    }).then(function (resp) {
-      typing.remove();
-      if (!resp.ok) return resp.json().catch(function () { return { error: 'код ' + resp.status }; })
-        .then(function (e) { addMessage('assistant', '<span class="uc-msg err">Ошибка: ' + (e.error || '?') + '</span>'); });
-      return resp.json().then(function (j) { addMessage('assistant', j.answer); });
-    }).catch(function () {
-      typing.remove();
-      addMessage('assistant', '<span class="uc-msg err">Не удалось связаться с сервером. Возможно, он выключен.</span>');
-    }).then(function () { sendBtn.disabled = false; input.focus(); });
+    resolveServer().then(function () { return doFetch(q); })
+      .catch(function () {
+        // сетевой сбой — URL туннеля мог смениться: перечитываем api_url.json и пробуем ещё раз
+        return resolveServer(true).then(function () { return doFetch(q); });
+      })
+      .then(function (resp) {
+        typing.remove();
+        if (!resp.ok) return resp.json().catch(function () { return { error: 'код ' + resp.status }; })
+          .then(function (e) { addMessage('assistant', '<span class="uc-msg err">Ошибка: ' + (e.error || '?') + '</span>'); });
+        return resp.json().then(function (j) { addMessage('assistant', j.answer); });
+      })
+      .catch(function () {
+        typing.remove();
+        addMessage('assistant', '<span class="uc-msg err">Не удалось связаться с сервером. Возможно, он выключен — попробуйте через минуту.</span>');
+      })
+      .then(function () { sendBtn.disabled = false; input.focus(); });
   }
 
   input.addEventListener('input', function () {
