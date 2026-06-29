@@ -503,6 +503,8 @@ function fmtAdr(v) { return v.toLocaleString('ru', {maximumFractionDigits:0}) + 
 
 function getMonth(d) { return parseInt(d.split('-')[1]); }
 function getYear(d)  { return parseInt(d.split('-')[0]); }
+function getDay(d)   { return parseInt(d.split('-')[2]); }
+function monthDay(d) { return getMonth(d) * 100 + getDay(d); } // для сравнения «тот же период»
 
 function getWeekday(dateStr) {
   // 0=Mon..6=Sun
@@ -625,9 +627,24 @@ function toggleCompare(on) {
 var charts = {};
 
 function renderAll() {
-  var cur  = filterData(DATA, state.selYear,  state.period, state.month);
-  var prev = filterData(DATA, state.selYear-1, state.period, state.month);
-  renderKPI(cur, prev);
+  var cur      = filterData(DATA, state.selYear,   state.period, state.month);
+  var prevFull = filterData(DATA, state.selYear-1, state.period, state.month);
+
+  // ── Сопоставимый период (YTD) ──
+  // Если текущий год неполный (напр. 2026 до 31 мая), обрезаем предыдущий
+  // год по той же дате (месяц-день), чтобы дельта сравнивала равные отрезки.
+  var prev = prevFull;
+  var trimmed = false;
+  if (cur.length && prevFull.length) {
+    var curMaxMD  = Math.max.apply(null, cur.map(function(r){ return monthDay(r.date); }));
+    var prevMaxMD = Math.max.apply(null, prevFull.map(function(r){ return monthDay(r.date); }));
+    if (prevMaxMD > curMaxMD) {
+      prev = prevFull.filter(function(r){ return monthDay(r.date) <= curMaxMD; });
+      trimmed = true;
+    }
+  }
+
+  renderKPI(cur, prev, trimmed);
   renderRevenueChart();
   renderOccChart();
   renderAdrChart();
@@ -636,7 +653,7 @@ function renderAll() {
 }
 
 // ── KPI ───────────────────────────────────────────────────────
-function renderKPI(cur, prev) {
+function renderKPI(cur, prev, trimmed) {
   var a = aggregate(cur);
   var b = aggregate(prev);
   if (!a) return;
@@ -648,7 +665,7 @@ function renderKPI(cur, prev) {
   document.getElementById('kpi-nights').textContent  = fmtNum(a.nights);
   document.getElementById('kpi-als').textContent     = a.als.toFixed(2);
 
-  var label = b ? 'vs ' + (state.selYear-1) : '';
+  var label = b ? 'vs ' + (state.selYear-1) + (trimmed ? ' (тот же период)' : '') : '';
   ['revenue-period','occ-period'].forEach(function(id) {
     var el = document.getElementById('kpi-'+id);
     if (el) el.textContent = label;
