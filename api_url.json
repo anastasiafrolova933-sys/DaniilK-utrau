@@ -1,5 +1,5 @@
 {
-  "url": "http://localhost:8768",
-  "updated": "2026-06-29T10:00:00+03:00",
-  "note": "Автообновляется start_server.ps1. Динамический URL cloudflared-туннеля; клиенты читают этот файл без кэша."
+    "url":  "https://church-magnetic-sydney-polar.trycloudflare.com",
+    "updated":  "2026-06-29T10:46:06+03:00",
+    "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch with no-cache."
 }

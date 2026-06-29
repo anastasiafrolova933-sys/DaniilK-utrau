@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'http://localhost:8768';
+  var DEFAULT_SERVER = 'https://church-magnetic-sydney-polar.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
