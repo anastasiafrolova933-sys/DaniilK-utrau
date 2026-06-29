@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дашборд — Загородный клуб Утрау</title>
+<meta name="theme-color" content="#080c08">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="data/dashboard_data.js"></script>
+<style>
+:root {
+  --bg:       #080c08;
+  --bg2:      #0f1610;
+  --surface:  #131a13;
+  --border:   rgba(255,255,255,0.07);
+  --border-h: rgba(255,255,255,0.14);
+  --text:     #eeeae4;
+  --text2:    rgba(238,234,228,0.50);
+  --text3:    rgba(238,234,228,0.25);
+  --accent:   #4fb8b0;
+  --accent2:  #4da6d9;
+  --neg:      #e07070;
+  --pos:      #7ec88a;
+  --warn:     #e0b070;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'DM Sans',-apple-system,sans-serif;
+  font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Layout ── */
+.sidebar{
+  position:fixed; top:0; left:0; bottom:0; width:220px;
+  background:var(--bg2); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; z-index:50; padding:24px 0;
+}
+.main{margin-left:220px; padding:32px 36px; min-height:100vh;}
+
+/* ── Sidebar ── */
+.sb-logo{padding:0 20px 24px; border-bottom:1px solid var(--border); margin-bottom:20px;}
+.sb-logo svg{height:36px; opacity:0.9;}
+.sb-logo-name{font-size:12px; color:var(--text2); margin-top:8px; letter-spacing:0.04em;}
+.sb-nav{flex:1; overflow-y:auto;}
+.sb-section{padding:4px 20px 16px;}
+.sb-section-label{font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text3); margin-bottom:8px; font-weight:500;}
+.sb-link{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; border-radius:6px; cursor:pointer;
+  font-size:13px; color:var(--text2); text-decoration:none;
+  transition:background .15s, color .15s; margin-bottom:2px;
+}
+.sb-link:hover{background:rgba(255,255,255,0.05); color:var(--text);}
+.sb-link.active{background:rgba(79,184,176,0.12); color:var(--accent);}
+.sb-link-icon{width:16px; text-align:center; opacity:0.6; font-size:14px;}
+.sb-bottom{padding:16px 20px; border-top:1px solid var(--border);}
+.sb-updated{font-size:10px; color:var(--text3); letter-spacing:0.04em;}
+.back-link{
+  display:block; font-size:11px; color:var(--text3); text-decoration:none;
+  letter-spacing:0.1em; text-transform:uppercase; margin-top:10px;
+  transition:color .2s;
+}
+.back-link:hover{color:var(--accent);}
+
+/* ── Page header ── */
+.page-header{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  margin-bottom:32px; flex-wrap:wrap; gap:16px;
+}
+.page-title{font-family:'Cormorant',serif; font-size:28px; font-weight:300; font-style:italic; color:var(--text);}
+.page-sub{font-size:11px; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; margin-top:4px;}
+
+/* ── Filter bar ── */
+.filter-bar{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:14px 18px; margin-bottom:32px;
+}
+.filter-group{display:flex; align-items:center; gap:8px;}
+.filter-label{font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3); font-weight:500; white-space:nowrap;}
+.filter-sep{width:1px; height:24px; background:var(--border); margin:0 4px;}
+.btn-group{display:flex; gap:2px;}
+.btn-pill{
+  padding:5px 14px; border-radius:20px; border:1px solid var(--border);
+  background:transparent; color:var(--text2); font-size:12px; font-weight:500;
+  cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap;
+}
+.btn-pill:hover{border-color:var(--border-h); color:var(--text);}
+.btn-pill.active{background:rgba(79,184,176,0.15); border-color:var(--accent); color:var(--accent);}
+select.filter-select{
+  background:transparent; border:1px solid var(--border); border-radius:20px;
+  color:var(--text2); font-size:12px; font-family:inherit; padding:5px 12px;
+  cursor:pointer; outline:none; transition:border-color .15s;
+}
+select.filter-select:hover{border-color:var(--border-h);}
+select.filter-select option{background:#1a241a;}
+.compare-toggle{
+  display:flex; align-items:center; gap:8px; margin-left:auto;
+  font-size:12px; color:var(--text2);
+}
+.toggle{position:relative; display:inline-block; width:36px; height:20px;}
+.toggle input{opacity:0; width:0; height:0;}
+.toggle-slider{
+  position:absolute; inset:0; border-radius:20px;
+  background:rgba(255,255,255,0.1); cursor:pointer; transition:.2s;
+}
+.toggle-slider:before{
+  content:''; position:absolute; width:14px; height:14px;
+  left:3px; bottom:3px; border-radius:50%;
+  background:var(--text3); transition:.2s;
+}
+.toggle input:checked + .toggle-slider{background:rgba(79,184,176,0.3);}
+.toggle input:checked + .toggle-slider:before{transform:translateX(16px); background:var(--accent);}
+
+/* ── KPI Cards ── */
+.kpi-grid{
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:12px; margin-bottom:32px;
+}
+.kpi-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:20px 22px;
+  transition:border-color .2s;
+}
+.kpi-card:hover{border-color:var(--border-h);}
+.kpi-label{font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text3); font-weight:500; margin-bottom:10px;}
+.kpi-value{font-size:26px; font-weight:500; letter-spacing:-0.02em; line-height:1;}
+.kpi-meta{display:flex; align-items:center; gap:8px; margin-top:8px;}
+.kpi-delta{font-size:12px; font-weight:500; padding:2px 8px; border-radius:12px;}
+.kpi-delta.pos{background:rgba(126,200,138,0.12); color:var(--pos);}
+.kpi-delta.neg{background:rgba(224,112,112,0.12); color:var(--neg);}
+.kpi-delta.neu{background:rgba(255,255,255,0.06); color:var(--text3);}
+.kpi-period{font-size:11px; color:var(--text3);}
+
+/* ── Charts ── */
+.charts-grid{display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:16px;}
+.charts-row{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;}
+.chart-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:20px 22px;
+}
+.chart-card-full{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:20px 22px; margin-bottom:16px;
+}
+.chart-title{font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3); font-weight:500; margin-bottom:16px;}
+.chart-wrap{position:relative;}
+
+/* ── Comparison Table ── */
+.compare-section{display:none;}
+.compare-section.visible{display:block;}
+.compare-table-wrap{background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px;}
+table.compare-table{width:100%; border-collapse:collapse;}
+table.compare-table th, table.compare-table td{
+  padding:11px 16px; text-align:right; border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+table.compare-table th{
+  font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text3); font-weight:500; text-align:left;
+  background:rgba(255,255,255,0.02);
+}
+table.compare-table th:first-child, table.compare-table td:first-child{text-align:left;}
+table.compare-table td.pos{color:var(--pos);}
+table.compare-table td.neg{color:var(--neg);}
+table.compare-table tr:last-child td{border-bottom:none;}
+table.compare-table tr:hover td{background:rgba(255,255,255,0.02);}
+.compare-selectors{display:flex; gap:16px; margin-bottom:16px; align-items:center;}
+.compare-selectors label{font-size:11px; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase;}
+.compare-selectors select{
+  background:var(--surface); border:1px solid var(--border-h); border-radius:6px;
+  color:var(--text); font-size:13px; font-family:inherit; padding:6px 12px;
+  cursor:pointer; outline:none;
+}
+.compare-selectors select option{background:#1a241a;}
+
+/* ── Calendar heatmap ── */
+.heatmap-wrap{overflow-x:auto;}
+.heatmap-grid{display:grid; gap:3px;}
+.hm-cell{
+  width:14px; height:14px; border-radius:2px;
+  background:var(--border); cursor:default; transition:opacity .15s;
+}
+.hm-cell:hover{opacity:0.8;}
+.hm-month-labels{display:flex; gap:3px; margin-bottom:4px;}
+.hm-month-label{font-size:9px; color:var(--text3); text-align:center;}
+
+/* ── Section divider ── */
+.section-label{
+  font-size:10px; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--text3); font-weight:500; margin-bottom:20px;
+  display:flex; align-items:center; gap:14px;
+}
+.section-label::after{content:''; flex:1; height:1px; background:var(--border);}
+
+/* ── Tooltip ── */
+.tooltip-custom{
+  background:#1a2a1a !important; border:1px solid var(--border-h) !important;
+  border-radius:8px !important; padding:10px 14px !important;
+  color:var(--text) !important; font-family:'DM Sans',sans-serif !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px; height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1); border-radius:2px;}
+
+@media(max-width:1100px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .charts-grid{grid-template-columns:1fr;}
+}
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .main{margin-left:0; padding:20px 16px;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .charts-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg viewBox="0 0 120 100" fill="none">
+      <ellipse cx="60" cy="30" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none"/>
+      <ellipse cx="40" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(-42 40 38)"/>
+      <ellipse cx="80" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(42 80 38)"/>
+      <ellipse cx="40" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(42 40 62)"/>
+      <ellipse cx="80" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(-42 80 62)"/>
+      <circle cx="60" cy="6" r="2" fill="#4fb8b0" opacity="0.6"/>
+    </svg>
+    <div class="sb-logo-name">Загородный клуб «Утрау»</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">
+      <div class="sb-section-label">Аналитика</div>
+      <a class="sb-link active" href="#overview">
+        <span class="sb-link-icon">◈</span> Обзор
+      </a>
+      <a class="sb-link" href="#revenue">
+        <span class="sb-link-icon">▦</span> Выручка
+      </a>
+      <a class="sb-link" href="#occupancy">
+        <span class="sb-link-icon">◉</span> Загрузка
+      </a>
+      <a class="sb-link" href="#rates">
+        <span class="sb-link-icon">◈</span> ADR / RevPAR
+      </a>
+      <a class="sb-link" href="#compare">
+        <span class="sb-link-icon">⇄</span> Сравнение
+      </a>
+    </div>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sb-updated" id="sb-updated">Данные за 2024</div>
+    <a class="back-link" href="reports.html">← Портал</a>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Доходность и загрузка</div>
+      <div class="page-sub">Загородный клуб «Утрау» · Казань</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:11px;color:var(--text3);">Обновлено</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px;" id="hdr-updated">—</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Год</span>
+      <div class="btn-group" id="year-btns"></div>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-label">Период</span>
+      <div class="btn-group">
+        <button class="btn-pill active" data-period="all" onclick="setPeriod('all',this)">Весь год</button>
+        <button class="btn-pill" data-period="q1"  onclick="setPeriod('q1',this)">Q1</button>
+        <button class="btn-pill" data-period="q2"  onclick="setPeriod('q2',this)">Q2</button>
+        <button class="btn-pill" data-period="q3"  onclick="setPeriod('q3',this)">Q3</button>
+        <button class="btn-pill" data-period="q4"  onclick="setPeriod('q4',this)">Q4</button>
+      </div>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-label">Месяц</span>
+      <select class="filter-select" id="month-sel" onchange="setMonth(this.value)">
+        <option value="0">Все месяцы</option>
+        <option value="1">Январь</option><option value="2">Февраль</option>
+        <option value="3">Март</option><option value="4">Апрель</option>
+        <option value="5">Май</option><option value="6">Июнь</option>
+        <option value="7">Июль</option><option value="8">Август</option>
+        <option value="9">Сентябрь</option><option value="10">Октябрь</option>
+        <option value="11">Ноябрь</option><option value="12">Декабрь</option>
+      </select>
+    </div>
+    <div class="compare-toggle">
+      <label class="toggle">
+        <input type="checkbox" id="compare-toggle" onchange="toggleCompare(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+      <span>Сравнение периодов</span>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div id="overview">
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Доход за проживание</div>
+      <div class="kpi-value" id="kpi-revenue">—</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta neu" id="kpi-revenue-delta">—</span>
+        <span class="kpi-period" id="kpi-revenue-period"></span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Загрузка</div>
+      <div class="kpi-value" id="kpi-occ">—</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta neu" id="kpi-occ-delta">—</span>
+        <span class="kpi-period" id="kpi-occ-period"></span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ADR (средняя цена)</div>
+      <div class="kpi-value" id="kpi-adr">—</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta neu" id="kpi-adr-delta">—</span>
+        <span class="kpi-period"></span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">RevPAR</div>
+      <div class="kpi-value" id="kpi-revpar">—</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta neu" id="kpi-revpar-delta">—</span>
+        <span class="kpi-period"></span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Продано номероночей</div>
+      <div class="kpi-value" id="kpi-nights">—</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta neu" id="kpi-nights-delta">—</span>
+        <span class="kpi-period"></span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ALS (ср. длина пребывания)</div>
+      <div class="kpi-value" id="kpi-als">—</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta neu" id="kpi-als-delta">—</span>
+        <span class="kpi-period"></span>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Main charts -->
+  <div id="revenue">
+  <div class="chart-card-full">
+    <div class="chart-title">Выручка по месяцам</div>
+    <div class="chart-wrap" style="height:260px">
+      <canvas id="chart-revenue"></canvas>
+    </div>
+  </div>
+  </div>
+
+  <div class="charts-row" id="occupancy">
+    <div class="chart-card">
+      <div class="chart-title">Загрузка % по месяцам</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="chart-occ"></canvas>
+      </div>
+    </div>
+    <div class="chart-card" id="rates">
+      <div class="chart-title">ADR и RevPAR</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="chart-adr"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Выручка по дням недели (среднее)</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="chart-weekday"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Загрузка по дням недели</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="chart-weekday-occ"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar heatmap -->
+  <div class="chart-card-full">
+    <div class="chart-title">Тепловая карта загрузки (% по дням)</div>
+    <div class="heatmap-wrap">
+      <div id="heatmap-months" class="hm-month-labels"></div>
+      <div id="heatmap" class="heatmap-grid"></div>
+    </div>
+  </div>
+
+  <!-- Comparison section -->
+  <div id="compare">
+  <div class="compare-section" id="compare-section">
+    <div class="section-label">Сравнение периодов</div>
+    <div class="compare-selectors">
+      <div>
+        <label>Период A</label><br>
+        <select id="cmp-year-a" onchange="renderCompare()">
+          <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+        </select>
+        <select id="cmp-month-a" onchange="renderCompare()">
+          <option value="0">Весь год</option>
+          <option value="1">Январь</option><option value="2">Февраль</option><option value="3">Март</option>
+          <option value="4">Апрель</option><option value="5">Май</option><option value="6">Июнь</option>
+          <option value="7">Июль</option><option value="8">Август</option><option value="9">Сентябрь</option>
+          <option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
+        </select>
+      </div>
+      <div style="color:var(--text3);font-size:20px;">⇄</div>
+      <div>
+        <label>Период B</label><br>
+        <select id="cmp-year-b" onchange="renderCompare()">
+          <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+        </select>
+        <select id="cmp-month-b" onchange="renderCompare()">
+          <option value="0">Весь год</option>
+          <option value="1">Январь</option><option value="2">Февраль</option><option value="3">Март</option>
+          <option value="4">Апрель</option><option value="5">Май</option><option value="6">Июнь</option>
+          <option value="7">Июль</option><option value="8">Август</option><option value="9">Сентябрь</option>
+          <option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
+        </select>
+      </div>
+    </div>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Показатель</th>
+            <th id="cmp-th-a">Период A</th>
+            <th id="cmp-th-b">Период B</th>
+            <th>Δ абс.</th>
+            <th>Δ %</th>
+          </tr>
+        </thead>
+        <tbody id="cmp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+
+</main>
+
+<script>
+// ── Data & state ──────────────────────────────────────────────
+var DATA = window.UTRAU_DATA ? window.UTRAU_DATA.daily : [];
+var state = { years: [], selYear: null, period: 'all', month: 0 };
+
+var MONTHS_RU = ['','Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+var MONTHS_SHORT = ['','Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+var WEEKDAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+var ACCENT = '#4fb8b0'; var ACCENT2 = '#4da6d9'; var ACCENT3 = '#7ec88a';
+
+// Chart.js global defaults
+Chart.defaults.color = 'rgba(238,234,228,0.45)';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.07)';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.boxWidth = 10;
+Chart.defaults.plugins.legend.labels.padding = 16;
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmtRub(v, short) {
+  if (v >= 1e6) return (v/1e6).toFixed(1).replace('.',',') + ' млн ₽';
+  if (short && v >= 1e3) return (v/1e3).toFixed(0) + ' тыс ₽';
+  return v.toLocaleString('ru') + ' ₽';
+}
+function fmtPct(v) { return v.toFixed(1) + '%'; }
+function fmtNum(v) { return v.toLocaleString('ru'); }
+function fmtAdr(v) { return v.toLocaleString('ru', {maximumFractionDigits:0}) + ' ₽'; }
+
+function getMonth(d) { return parseInt(d.split('-')[1]); }
+function getYear(d)  { return parseInt(d.split('-')[0]); }
+
+function getWeekday(dateStr) {
+  // 0=Mon..6=Sun
+  var d = new Date(dateStr);
+  return (d.getDay() + 6) % 7;
+}
+
+function filterData(rows, yearFilter, periodFilter, monthFilter) {
+  return rows.filter(function(r) {
+    if (yearFilter && r.year !== yearFilter) return false;
+    var m = getMonth(r.date);
+    if (monthFilter && monthFilter > 0 && m !== monthFilter) return false;
+    if (periodFilter && periodFilter !== 'all') {
+      var q = {q1:[1,2,3],q2:[4,5,6],q3:[7,8,9],q4:[10,11,12]};
+      if (q[periodFilter] && !q[periodFilter].includes(m)) return false;
+    }
+    return true;
+  });
+}
+
+function aggregate(rows) {
+  if (!rows.length) return null;
+  var revenue = rows.reduce(function(s,r){return s+r.revenue;}, 0);
+  var nights  = rows.reduce(function(s,r){return s+r.roomNights;}, 0);
+  var occ     = rows.reduce(function(s,r){return s+r.occupancy;}, 0) / rows.length;
+  var adr     = nights > 0 ? revenue / nights : 0;
+  var avail   = rows.reduce(function(s,r){return s+r.availRooms;}, 0);
+  var revpar  = avail > 0 ? revenue / avail : 0;
+  var als     = rows.reduce(function(s,r){return s+r.als;}, 0) / rows.length;
+  return { revenue, nights, occ, adr, revpar, als, days: rows.length };
+}
+
+function monthlyAgg(rows) {
+  var byMonth = {};
+  rows.forEach(function(r) {
+    var m = getMonth(r.date);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
+  return byMonth;
+}
+
+function delta(a, b) {
+  if (!a || !b || b === 0) return null;
+  return ((a - b) / Math.abs(b)) * 100;
+}
+
+function deltaEl(el, valA, valB, format) {
+  if (!el) return;
+  var d = delta(valA, valB);
+  if (d === null) { el.textContent = '—'; el.className = 'kpi-delta neu'; return; }
+  var sign = d >= 0 ? '+' : '';
+  el.textContent = sign + d.toFixed(1) + '%';
+  el.className = 'kpi-delta ' + (d >= 0 ? 'pos' : 'neg');
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function init() {
+  if (!DATA.length) { document.querySelector('.main').innerHTML = '<p style="color:var(--text2);padding:60px 0;text-align:center">Нет данных. Запустите update.bat</p>'; return; }
+
+  // Years available
+  var yearsSet = {};
+  DATA.forEach(function(r){ yearsSet[r.year] = true; });
+  state.years = Object.keys(yearsSet).map(Number).sort();
+  state.selYear = state.years[0];
+
+  // Year buttons
+  var yc = document.getElementById('year-btns');
+  state.years.forEach(function(y) {
+    var b = document.createElement('button');
+    b.className = 'btn-pill' + (y === state.selYear ? ' active' : '');
+    b.textContent = y;
+    b.onclick = function() { setYear(y, b); };
+    yc.appendChild(b);
+  });
+
+  // Updated label
+  if (window.UTRAU_DATA && window.UTRAU_DATA.generated) {
+    document.getElementById('sb-updated').textContent = 'Обновлено ' + window.UTRAU_DATA.generated;
+    document.getElementById('hdr-updated').textContent = window.UTRAU_DATA.generated;
+  }
+
+  renderAll();
+}
+
+// ── State setters ─────────────────────────────────────────────
+function setYear(y, btn) {
+  state.selYear = y;
+  document.querySelectorAll('#year-btns .btn-pill').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderAll();
+}
+
+function setPeriod(p, btn) {
+  state.period = p;
+  document.querySelectorAll('[data-period]').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('month-sel').value = '0';
+  state.month = 0;
+  renderAll();
+}
+
+function setMonth(m) {
+  state.month = parseInt(m);
+  if (m > 0) {
+    state.period = 'all';
+    document.querySelectorAll('[data-period]').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelector('[data-period="all"]').classList.add('active');
+  }
+  renderAll();
+}
+
+function toggleCompare(on) {
+  var el = document.getElementById('compare-section');
+  if (on) { el.classList.add('visible'); renderCompare(); }
+  else     el.classList.remove('visible');
+}
+
+// ── Render all ────────────────────────────────────────────────
+var charts = {};
+
+function renderAll() {
+  var cur  = filterData(DATA, state.selYear,  state.period, state.month);
+  var prev = filterData(DATA, state.selYear-1, state.period, state.month);
+  renderKPI(cur, prev);
+  renderRevenueChart();
+  renderOccChart();
+  renderAdrChart();
+  renderWeekday();
+  renderHeatmap(cur);
+}
+
+// ── KPI ───────────────────────────────────────────────────────
+function renderKPI(cur, prev) {
+  var a = aggregate(cur);
+  var b = aggregate(prev);
+  if (!a) return;
+
+  document.getElementById('kpi-revenue').textContent = fmtRub(a.revenue);
+  document.getElementById('kpi-occ').textContent     = fmtPct(a.occ);
+  document.getElementById('kpi-adr').textContent     = fmtAdr(a.adr);
+  document.getElementById('kpi-revpar').textContent  = fmtAdr(a.revpar);
+  document.getElementById('kpi-nights').textContent  = fmtNum(a.nights);
+  document.getElementById('kpi-als').textContent     = a.als.toFixed(2);
+
+  var label = b ? 'vs ' + (state.selYear-1) : '';
+  ['revenue-period','occ-period'].forEach(function(id) {
+    var el = document.getElementById('kpi-'+id);
+    if (el) el.textContent = label;
+  });
+
+  if (b) {
+    deltaEl(document.getElementById('kpi-revenue-delta'), a.revenue, b.revenue);
+    deltaEl(document.getElementById('kpi-occ-delta'),     a.occ,     b.occ);
+    deltaEl(document.getElementById('kpi-adr-delta'),     a.adr,     b.adr);
+    deltaEl(document.getElementById('kpi-revpar-delta'),  a.revpar,  b.revpar);
+    deltaEl(document.getElementById('kpi-nights-delta'),  a.nights,  b.nights);
+    deltaEl(document.getElementById('kpi-als-delta'),     a.als,     b.als);
+  }
+}
+
+// ── Revenue chart ─────────────────────────────────────────────
+function renderRevenueChart() {
+  var labels = MONTHS_SHORT.slice(1);
+  var datasets = [];
+  var colors = [ACCENT, ACCENT2, ACCENT3, '#e0b070'];
+
+  state.years.forEach(function(y, i) {
+    var rows = filterData(DATA, y, 'all', 0);
+    var byM = monthlyAgg(rows);
+    var vals = labels.map(function(_, mi) {
+      var m = mi + 1;
+      var agg = aggregate(byM[m] || []);
+      return agg ? Math.round(agg.revenue) : 0;
+    });
+    datasets.push({
+      label: String(y),
+      data: vals,
+      backgroundColor: colors[i % colors.length] + (y === state.selYear ? '99' : '33'),
+      borderColor: colors[i % colors.length],
+      borderWidth: y === state.selYear ? 2 : 1,
+      borderRadius: 4,
+    });
+  });
+
+  if (charts.revenue) charts.revenue.destroy();
+  charts.revenue = new Chart(document.getElementById('chart-revenue'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' },
+        tooltip: { callbacks: { label: function(c){ return c.dataset.label + ': ' + fmtRub(c.raw); } } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v){ return fmtRub(v,true); } } }
+      }
+    }
+  });
+}
+
+// ── Occupancy chart ───────────────────────────────────────────
+function renderOccChart() {
+  var labels = MONTHS_SHORT.slice(1);
+  var datasets = [];
+  var colors = [ACCENT, ACCENT2, ACCENT3, '#e0b070'];
+
+  state.years.forEach(function(y, i) {
+    var rows = filterData(DATA, y, 'all', 0);
+    var byM = monthlyAgg(rows);
+    var vals = labels.map(function(_, mi) {
+      var agg = aggregate(byM[mi+1] || []);
+      return agg ? +agg.occ.toFixed(1) : null;
+    });
+    datasets.push({
+      label: String(y),
+      data: vals,
+      borderColor: colors[i % colors.length],
+      backgroundColor: colors[i % colors.length] + '22',
+      tension: 0.4, fill: y === state.selYear,
+      borderWidth: y === state.selYear ? 2 : 1.5,
+      pointRadius: 3, pointHoverRadius: 5,
+    });
+  });
+
+  if (charts.occ) charts.occ.destroy();
+  charts.occ = new Chart(document.getElementById('chart-occ'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' },
+        tooltip: { callbacks: { label: function(c){ return c.dataset.label + ': ' + c.raw + '%'; } } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, min: 0, max: 100, ticks: { callback: function(v){ return v+'%'; } } }
+      }
+    }
+  });
+}
+
+// ── ADR/RevPAR chart ──────────────────────────────────────────
+function renderAdrChart() {
+  var rows = filterData(DATA, state.selYear, 'all', 0);
+  var byM = monthlyAgg(rows);
+  var labels = MONTHS_SHORT.slice(1);
+  var adrVals = labels.map(function(_,mi){ var a=aggregate(byM[mi+1]||[]); return a?Math.round(a.adr):0; });
+  var revVals = labels.map(function(_,mi){ var a=aggregate(byM[mi+1]||[]); return a?Math.round(a.revpar):0; });
+
+  if (charts.adr) charts.adr.destroy();
+  charts.adr = new Chart(document.getElementById('chart-adr'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'ADR', data:adrVals, borderColor:ACCENT, backgroundColor:ACCENT+'22', tension:0.4, fill:true, pointRadius:3, borderWidth:2 },
+        { label:'RevPAR', data:revVals, borderColor:ACCENT2, backgroundColor:ACCENT2+'22', tension:0.4, fill:true, pointRadius:3, borderWidth:2 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{position:'top'},
+        tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fmtAdr(c.raw);}}}
+      },
+      scales: {
+        x:{grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:function(v){return (v/1000).toFixed(0)+'к';}}}
+      }
+    }
+  });
+}
+
+// ── Weekday charts ────────────────────────────────────────────
+function renderWeekday() {
+  var cur = filterData(DATA, state.selYear, state.period, state.month);
+  var byWd = [[],[],[],[],[],[],[]];
+  cur.forEach(function(r){ byWd[getWeekday(r.date)].push(r); });
+
+  var revVals = byWd.map(function(rows){ var a=aggregate(rows); return a?Math.round(a.revenue/rows.length):0; });
+  var occVals = byWd.map(function(rows){ var a=aggregate(rows); return a?+a.occ.toFixed(1):0; });
+
+  var colorRev = WEEKDAYS.map(function(_,i){ return i>=5 ? ACCENT+'dd' : ACCENT+'66'; });
+  var colorOcc = WEEKDAYS.map(function(_,i){ return i>=5 ? ACCENT2+'dd' : ACCENT2+'66'; });
+
+  if (charts.wd) charts.wd.destroy();
+  charts.wd = new Chart(document.getElementById('chart-weekday'), {
+    type:'bar', data:{ labels:WEEKDAYS,
+      datasets:[{label:'Ср. выручка/день', data:revVals, backgroundColor:colorRev, borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtRub(c.raw);}}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:function(v){return fmtRub(v,true);}}}}
+    }
+  });
+
+  if (charts.wdOcc) charts.wdOcc.destroy();
+  charts.wdOcc = new Chart(document.getElementById('chart-weekday-occ'), {
+    type:'bar', data:{ labels:WEEKDAYS,
+      datasets:[{label:'Загрузка %', data:occVals, backgroundColor:colorOcc, borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw+'%';}}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'}},y:{grid:{color:'rgba(255,255,255,0.04)'},min:0,max:100,ticks:{callback:function(v){return v+'%';}}}}
+    }
+  });
+}
+
+// ── Heatmap ───────────────────────────────────────────────────
+function renderHeatmap(rows) {
+  var occMap = {};
+  rows.forEach(function(r){ occMap[r.date] = r.occupancy; });
+
+  var year = state.selYear;
+  var start = new Date(year + '-01-01');
+  var end   = new Date(year + '-12-31');
+
+  var hm = document.getElementById('heatmap');
+  var ml = document.getElementById('heatmap-months');
+  hm.innerHTML = ''; ml.innerHTML = '';
+
+  // 7 rows (Mon-Sun), columns = weeks
+  var startWd = (start.getDay() + 6) % 7; // 0=Mon
+  var totalDays = Math.round((end - start) / 86400000) + 1;
+  var totalWeeks = Math.ceil((startWd + totalDays) / 7);
+
+  hm.style.gridTemplateColumns = 'repeat(' + totalWeeks + ', 14px)';
+  hm.style.gridTemplateRows = 'repeat(7, 14px)';
+
+  function color(v) {
+    if (v === undefined) return 'rgba(255,255,255,0.04)';
+    if (v < 20) return 'rgba(79,184,176,0.10)';
+    if (v < 40) return 'rgba(79,184,176,0.25)';
+    if (v < 60) return 'rgba(79,184,176,0.45)';
+    if (v < 80) return 'rgba(79,184,176,0.70)';
+    return '#4fb8b0';
+  }
+
+  // Create grid: col-major (week columns)
+  var cells = [];
+  for (var w = 0; w < totalWeeks; w++) {
+    for (var d = 0; d < 7; d++) {
+      var dayNum = w * 7 + d - startWd;
+      var cell = document.createElement('div');
+      cell.className = 'hm-cell';
+      cell.style.gridColumn = (w+1);
+      cell.style.gridRow = (d+1);
+      if (dayNum >= 0 && dayNum < totalDays) {
+        var dt = new Date(start.getTime() + dayNum * 86400000);
+        var iso = dt.toISOString().split('T')[0];
+        var occ = occMap[iso];
+        cell.style.background = color(occ);
+        cell.title = iso + ': ' + (occ !== undefined ? occ.toFixed(1) + '%' : 'нет данных');
+      } else {
+        cell.style.background = 'transparent';
+      }
+      cells.push(cell);
+      hm.appendChild(cell);
+    }
+  }
+
+  // Month labels
+  var curMonth = -1;
+  for (var w2 = 0; w2 < totalWeeks; w2++) {
+    var dayNum2 = w2 * 7 - startWd;
+    if (dayNum2 < 0) dayNum2 = 0;
+    var dt2 = new Date(start.getTime() + dayNum2 * 86400000);
+    var m = dt2.getMonth();
+    var span = document.createElement('span');
+    span.style.width = '17px';
+    span.style.display = 'inline-block';
+    span.style.fontSize = '9px';
+    span.style.color = 'rgba(238,234,228,0.3)';
+    if (m !== curMonth) { span.textContent = MONTHS_SHORT[m+1]; curMonth = m; }
+    ml.appendChild(span);
+  }
+}
+
+// ── Compare ───────────────────────────────────────────────────
+function renderCompare() {
+  var yA = parseInt(document.getElementById('cmp-year-a').value);
+  var mA = parseInt(document.getElementById('cmp-month-a').value);
+  var yB = parseInt(document.getElementById('cmp-year-b').value);
+  var mB = parseInt(document.getElementById('cmp-month-b').value);
+
+  var rowsA = filterData(DATA, yA, 'all', mA);
+  var rowsB = filterData(DATA, yB, 'all', mB);
+  var a = aggregate(rowsA); var b = aggregate(rowsB);
+
+  document.getElementById('cmp-th-a').textContent = yA + (mA ? ' / ' + MONTHS_SHORT[mA] : '');
+  document.getElementById('cmp-th-b').textContent = yB + (mB ? ' / ' + MONTHS_SHORT[mB] : '');
+
+  var metrics = [
+    { label: 'Доход за проживание, ₽', ka: 'revenue', kb: 'revenue', fmt: function(v){ return v.toLocaleString('ru',{maximumFractionDigits:0}); } },
+    { label: 'Продано номероночей',    ka: 'nights',  kb: 'nights',  fmt: fmtNum },
+    { label: 'Загрузка %',             ka: 'occ',     kb: 'occ',     fmt: function(v){ return v.toFixed(1)+'%'; } },
+    { label: 'ADR, ₽',                 ka: 'adr',     kb: 'adr',     fmt: function(v){ return v.toLocaleString('ru',{maximumFractionDigits:0}); } },
+    { label: 'RevPAR, ₽',              ka: 'revpar',  kb: 'revpar',  fmt: function(v){ return v.toLocaleString('ru',{maximumFractionDigits:0}); } },
+    { label: 'ALS (ср. пребывание)',   ka: 'als',     kb: 'als',     fmt: function(v){ return v.toFixed(2); } },
+  ];
+
+  var tbody = document.getElementById('cmp-tbody');
+  tbody.innerHTML = '';
+  metrics.forEach(function(m) {
+    var va = a ? a[m.ka] : null;
+    var vb = b ? b[m.kb] : null;
+    var d  = (va !== null && vb !== null && vb !== 0) ? va - vb : null;
+    var dp = (d !== null && vb !== 0) ? (d / Math.abs(vb) * 100) : null;
+    var cls = dp === null ? '' : (dp >= 0 ? 'pos' : 'neg');
+    var sign = dp !== null && dp >= 0 ? '+' : '';
+    tbody.innerHTML += '<tr>' +
+      '<td>' + m.label + '</td>' +
+      '<td>' + (va !== null ? m.fmt(va) : '—') + '</td>' +
+      '<td>' + (vb !== null ? m.fmt(vb) : '—') + '</td>' +
+      '<td class="' + cls + '">' + (d !== null ? sign + m.fmt(d) : '—') + '</td>' +
+      '<td class="' + cls + '">' + (dp !== null ? sign + dp.toFixed(1) + '%' : '—') + '</td>' +
+      '</tr>';
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
