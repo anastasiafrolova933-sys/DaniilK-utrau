@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Бюджет — Загородный клуб Утрау</title>
+<meta name="theme-color" content="#080c08">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="data/budget_data.js"></script>
+<style>
+:root{
+  --bg:#080c08; --bg2:#0f1610; --surface:#131a13;
+  --border:rgba(255,255,255,0.07); --border-h:rgba(255,255,255,0.14);
+  --text:#eeeae4; --text2:rgba(238,234,228,0.50); --text3:rgba(238,234,228,0.25);
+  --accent:#4fb8b0; --accent2:#4da6d9; --neg:#e07070; --pos:#7ec88a; --warn:#e0b070;
+  --rev:#4fb8b0; --cost:#e0a070; --profit:#7ec88a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+/* Layout */
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50;padding:24px 0;}
+.main{margin-left:220px;padding:32px 36px;min-height:100vh;}
+.sb-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.sb-logo svg{height:36px;opacity:.9;}
+.sb-logo-name{font-size:12px;color:var(--text2);margin-top:8px;letter-spacing:.04em;}
+.sb-nav{flex:1;overflow-y:auto;}
+.sb-section{padding:4px 20px 16px;}
+.sb-section-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-weight:500;}
+.sb-link{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);text-decoration:none;transition:.15s;margin-bottom:2px;}
+.sb-link:hover{background:rgba(255,255,255,.05);color:var(--text);}
+.sb-link.active{background:rgba(79,184,176,.12);color:var(--accent);}
+.sb-link-icon{width:16px;text-align:center;opacity:.6;}
+.sb-bottom{padding:16px 20px;border-top:1px solid var(--border);}
+.sb-updated{font-size:10px;color:var(--text3);letter-spacing:.04em;}
+.back-link{display:block;font-size:11px;color:var(--text3);text-decoration:none;letter-spacing:.1em;text-transform:uppercase;margin-top:10px;transition:color .2s;}
+.back-link:hover{color:var(--accent);}
+
+/* Header */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px;}
+.page-title{font-family:'Cormorant',serif;font-size:28px;font-weight:300;font-style:italic;}
+.page-sub{font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+
+/* Doc toggle (BDR/BDDS) */
+.doc-toggle{display:inline-flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px;margin-bottom:20px;}
+.doc-btn{padding:8px 20px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:.15s;}
+.doc-btn:hover{color:var(--text);}
+.doc-btn.active{background:rgba(79,184,176,.15);color:var(--accent);}
+.doc-desc{font-size:12px;color:var(--text3);margin:-12px 0 20px;line-height:1.5;max-width:680px;}
+
+/* Filter bar */
+.filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:24px;}
+.filter-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;white-space:nowrap;}
+.filter-sep{width:1px;height:24px;background:var(--border);margin:0 4px;}
+.btn-group{display:flex;gap:2px;flex-wrap:wrap;}
+.btn-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;}
+.btn-pill:hover{border-color:var(--border-h);color:var(--text);}
+.btn-pill.active{background:rgba(79,184,176,.15);border-color:var(--accent);color:var(--accent);}
+.ytd-note{font-size:11px;color:var(--warn);margin-left:auto;display:flex;align-items:center;gap:6px;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;}
+.kpi-card.rev::before,.kpi-card.cost::before,.kpi-card.profit::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.kpi-card.rev::before{background:var(--rev);}
+.kpi-card.cost::before{background:var(--cost);}
+.kpi-card.profit::before{background:var(--profit);}
+.kpi-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:10px;}
+.kpi-value{font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.1;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:7px;display:flex;flex-direction:column;gap:3px;}
+.kpi-row{display:flex;justify-content:space-between;gap:8px;}
+.kpi-row b{color:var(--text2);font-weight:500;}
+.kpi-exec{margin-top:8px;display:flex;align-items:center;gap:8px;}
+.exec-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;}
+.exec-fill{height:100%;border-radius:3px;background:var(--accent);}
+.exec-pct{font-size:12px;font-weight:600;}
+
+/* Charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;}
+.chart-card-full{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+.chart-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:16px;}
+.chart-wrap{position:relative;}
+
+/* Section label */
+.section-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);font-weight:500;margin:28px 0 16px;display:flex;align-items:center;gap:14px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* Tree table */
+.tree-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tree-controls{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;}
+.tree-controls .mini{font-size:11px;color:var(--text3);background:transparent;border:1px solid var(--border);border-radius:14px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:.15s;}
+.tree-controls .mini:hover{border-color:var(--accent);color:var(--accent);}
+table.tree{width:100%;border-collapse:collapse;}
+table.tree th,table.tree td{padding:8px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap;}
+table.tree th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:500;background:rgba(255,255,255,.02);position:sticky;top:0;}
+table.tree th:first-child,table.tree td:first-child{text-align:left;white-space:normal;min-width:280px;}
+table.tree td.num{font-variant-numeric:tabular-nums;}
+table.tree tr:hover td{background:rgba(255,255,255,.025);}
+.tree-name{display:flex;align-items:center;gap:8px;}
+.tree-toggle{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:10px;border:1px solid var(--border);border-radius:4px;flex-shrink:0;transition:.15s;}
+.tree-toggle:hover{border-color:var(--accent);color:var(--accent);}
+.tree-toggle.empty{border:none;cursor:default;visibility:hidden;}
+.tree-code{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums;}
+.lvl1{font-weight:600;font-size:14px;}
+.lvl1 td{background:rgba(79,184,176,.04);}
+.lvl2{font-weight:500;}
+.lvl3 .tree-label,.lvl4 .tree-label{color:var(--text2);font-weight:300;}
+.row-total td{background:rgba(126,200,138,.06);font-weight:600;border-top:1px solid var(--border-h);}
+.row-total.neg td{background:rgba(224,112,112,.06);}
+.pos{color:var(--pos);}
+.neg{color:var(--neg);}
+.muted{color:var(--text3);}
+.delta-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;}
+.delta-chip.pos{background:rgba(126,200,138,.12);}
+.delta-chip.neg{background:rgba(224,112,112,.12);}
+.delta-chip.neu{background:rgba(255,255,255,.06);color:var(--text3);}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.charts-row{grid-template-columns:1fr;}}
+@media(max-width:768px){.sidebar{display:none;}.main{margin-left:0;padding:18px 12px;}.kpi-grid{grid-template-columns:1fr 1fr;}table.tree{font-size:12px;}.tree-wrap{overflow-x:auto;}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg viewBox="0 0 120 100" fill="none">
+      <ellipse cx="60" cy="30" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none"/>
+      <ellipse cx="40" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(-42 40 38)"/>
+      <ellipse cx="80" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(42 80 38)"/>
+      <ellipse cx="40" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(42 40 62)"/>
+      <ellipse cx="80" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" fill="none" transform="rotate(-42 80 62)"/>
+    </svg>
+    <div class="sb-logo-name">Загородный клуб «Утрау»</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">
+      <div class="sb-section-label">Бюджет</div>
+      <a class="sb-link active" href="#" onclick="setDoc('bdr');return false;" id="nav-bdr"><span class="sb-link-icon">▤</span> БДР (P&L)</a>
+      <a class="sb-link" href="#" onclick="setDoc('bdds');return false;" id="nav-bdds"><span class="sb-link-icon">₽</span> БДДС (деньги)</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-section-label">Отчёты</div>
+      <a class="sb-link" href="finance.html"><span class="sb-link-icon">◉</span> Доходность</a>
+      <a class="sb-link" href="reports.html"><span class="sb-link-icon">⌂</span> Портал</a>
+    </div>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sb-updated" id="sb-updated">—</div>
+    <a class="back-link" href="reports.html">← Портал</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title" id="doc-title">Бюджет доходов и расходов</div>
+      <div class="page-sub">Загородный клуб «Утрау» · План 2026 / Факт 2026 / Факт 2025</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:11px;color:var(--text3);">Обновлено</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px;" id="hdr-updated">—</div>
+    </div>
+  </div>
+
+  <div class="doc-toggle">
+    <button class="doc-btn active" id="db-bdr" onclick="setDoc('bdr')">БДР · Прибыли и убытки</button>
+    <button class="doc-btn" id="db-bdds" onclick="setDoc('bdds')">БДДС · Движение денег</button>
+  </div>
+  <div class="doc-desc" id="doc-desc"></div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Период</span>
+    <div class="btn-group" id="period-btns">
+      <button class="btn-pill active" data-p="ytd" onclick="setPeriod('ytd',this)">Факт. период (YTD)</button>
+      <button class="btn-pill" data-p="year" onclick="setPeriod('year',this)">Год</button>
+      <button class="btn-pill" data-p="q1" onclick="setPeriod('q1',this)">Q1</button>
+      <button class="btn-pill" data-p="q2" onclick="setPeriod('q2',this)">Q2</button>
+      <button class="btn-pill" data-p="q3" onclick="setPeriod('q3',this)">Q3</button>
+      <button class="btn-pill" data-p="q4" onclick="setPeriod('q4',this)">Q4</button>
+    </div>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Месяц</span>
+    <select class="btn-pill" id="month-sel" onchange="setMonth(this.value)" style="border-radius:20px;">
+      <option value="-1">Все</option>
+      <option value="0">Январь</option><option value="1">Февраль</option><option value="2">Март</option>
+      <option value="3">Апрель</option><option value="4">Май</option><option value="5">Июнь</option>
+      <option value="6">Июль</option><option value="7">Август</option><option value="8">Сентябрь</option>
+      <option value="9">Октябрь</option><option value="10">Ноябрь</option><option value="11">Декабрь</option>
+    </select>
+    <span class="ytd-note" id="period-note"></span>
+  </div>
+
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title" id="chart-rev-title">Выручка: план vs факт по месяцам</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-month"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title" id="chart-struct-title">Структура (план vs факт)</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-struct"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card-full">
+    <div class="chart-title" id="chart-bottom-title">Финансовый результат по месяцам</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="chart-bottom"></canvas></div>
+  </div>
+
+  <div class="section-label" id="tree-section-label">Детализация статей</div>
+  <div class="tree-wrap">
+    <div class="tree-controls">
+      <button class="mini" onclick="expandAll()">Развернуть всё</button>
+      <button class="mini" onclick="collapseAll()">Свернуть</button>
+      <span style="font-size:11px;color:var(--text3);margin-left:auto;">Клик по ▸ разворачивает подстатьи</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="tree">
+        <thead>
+          <tr>
+            <th>Статья</th>
+            <th>Факт 2025</th>
+            <th>План 2026</th>
+            <th>Факт 2026</th>
+            <th>Вып. %</th>
+            <th>Δ к плану</th>
+          </tr>
+        </thead>
+        <tbody id="tree-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="font-size:11px;color:var(--text3);margin-top:16px;line-height:1.6;">
+    <b style="color:var(--text2);">Примечания.</b> Факт 2026 заполняется ежедневно и на текущий момент охватывает январь–май.
+    Период «Факт. период (YTD)» сравнивает план и факт за один и тот же отрезок — это корректный % выполнения бюджета.
+    Годовая колонка берётся из таблицы как есть (может незначительно отличаться от суммы месяцев из-за ручных корректировок).
+  </div>
+</main>
+
+<script>
+var RAW = window.UTRAU_BUDGET || {bdr:[],bdds:[],generated:''};
+var MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+var REV='#4fb8b0', COST='#e0a070', PROFIT='#7ec88a', PLAN='rgba(255,255,255,0.22)';
+
+var state = { doc:'bdr', period:'ytd', month:-1 };
+
+// Last month with fact data (detect from revenue line "1.")
+function lastFactMonth(rows){
+  var rev = rows.find(function(r){return r.code==='1.';});
+  if(!rev) return 4;
+  var last=-1;
+  for(var i=0;i<12;i++){ if(rev.mf26[i]!=null && rev.mf26[i]!==0) last=i; }
+  return last<0?4:last;
+}
+
+Chart.defaults.color='rgba(238,234,228,0.45)';
+Chart.defaults.borderColor='rgba(255,255,255,0.07)';
+Chart.defaults.font.family="'DM Sans',sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.plugins.legend.labels.boxWidth=10;
+Chart.defaults.plugins.legend.labels.padding=14;
+
+// ── formatters ──
+function fmtRub(v){ if(v==null) return '—'; var a=Math.abs(v);
+  if(a>=1e6) return (v/1e6).toFixed(2).replace('.',',')+' млн';
+  if(a>=1e3) return Math.round(v/1e3)+' тыс'; return Math.round(v).toLocaleString('ru'); }
+function fmtFull(v){ if(v==null) return '—'; return Math.round(v).toLocaleString('ru')+' ₽'; }
+function fmtPct(v){ if(v==null||!isFinite(v)) return '—'; return (v>=0?'':'')+v.toFixed(1)+'%'; }
+
+// ── period month set ──
+function periodMonths(){
+  var lf = lastFactMonth(RAW[state.doc]);
+  if(state.month>=0) return [state.month];
+  switch(state.period){
+    case 'year': return [0,1,2,3,4,5,6,7,8,9,10,11];
+    case 'ytd':  return Array.from({length:lf+1},function(_,i){return i;});
+    case 'q1': return [0,1,2]; case 'q2':return [3,4,5];
+    case 'q3': return [6,7,8]; case 'q4':return [9,10,11];
+  }
+  return [0,1,2,3,4,5,6,7,8,9,10,11];
+}
+
+// sum a scenario array over period; null-safe. If period='year' and no month, use year field.
+function sumPeriod(row, scen){
+  var arr = scen==='f25'?row.mf25 : scen==='p26'?row.mp26 : row.mf26;
+  var ms = periodMonths();
+  // For full year view use the sheet year value (authoritative)
+  if(state.month<0 && state.period==='year'){
+    return row.year[scen];
+  }
+  var s=0, any=false;
+  ms.forEach(function(m){ if(arr[m]!=null){ s+=arr[m]; any=true; } });
+  return any? s : null;
+}
+
+function getRow(code){ return RAW[state.doc].find(function(r){return r.code===code;}); }
+
+// ── doc descriptions ──
+var DESC = {
+  bdr: 'Бюджет доходов и расходов (P&L, метод начисления): операционная выручка минус расходы по службам, включая амортизацию и проценты по кредитам, до прибыли до налогообложения.',
+  bdds:'Бюджет движения денежных средств: операционные потоки плюс инвестиционные проекты (capex) и финансовая деятельность — кредиты, овернайт, выплаты собственникам.'
+};
+
+// ── KPI definitions per doc ──
+function kpiDefs(){
+  if(state.doc==='bdr'){
+    return [
+      {label:'Выручка',cls:'rev',code:'1.'},
+      {label:'Затраты',cls:'cost',code:'2.'},
+      {label:'Операционная прибыль',cls:'profit',code:'ИТОГО_OP'},
+      {label:'Прибыль до налога',cls:'profit',code:'2.19.'}
+    ];
+  } else {
+    return [
+      {label:'Выручка',cls:'rev',code:'1.'},
+      {label:'Затраты операционные',cls:'cost',code:'2.'},
+      {label:'Операционная прибыль',cls:'profit',code:'ИТОГО_OP'},
+      {label:'Инвестиции (capex)',cls:'cost',code:'2.16.2'}
+    ];
+  }
+}
+
+// find an operating-profit-like row (kind total, name contains profit) — fallback compute rev-cost
+function opProfitRow(){
+  var rows=RAW[state.doc];
+  // try a 'total' kind row that is revenue(1.) - cost(2.)
+  var r = rows.find(function(x){return x.kind==='total' && /Операционная прибыль/i.test(x.name);});
+  return r;
+}
+
+function valForKpi(def){
+  if(def.code==='ИТОГО_OP'){
+    var rev=getRow('1.'), cost=getRow('2.');
+    return {
+      f25:(rev?sumPeriod(rev,'f25'):0)-(cost?sumPeriod(cost,'f25'):0),
+      p26:(rev?sumPeriod(rev,'p26'):0)-(cost?sumPeriod(cost,'p26'):0),
+      f26:(rev?sumPeriod(rev,'f26'):0)-(cost?sumPeriod(cost,'f26'):0)
+    };
+  }
+  var row=getRow(def.code);
+  if(!row) return {f25:null,p26:null,f26:null};
+  return {f25:sumPeriod(row,'f25'),p26:sumPeriod(row,'p26'),f26:sumPeriod(row,'f26')};
+}
+
+function renderKPI(){
+  var grid=document.getElementById('kpi-grid'); grid.innerHTML='';
+  kpiDefs().forEach(function(def){
+    var v=valForKpi(def);
+    var exec = (v.p26 && v.p26!==0)? (v.f26/v.p26*100):null;
+    var execClamp = exec==null?0:Math.max(0,Math.min(100,exec));
+    var card=document.createElement('div');
+    card.className='kpi-card '+def.cls;
+    var execHtml = exec==null?'' :
+      '<div class="kpi-exec"><div class="exec-bar"><div class="exec-fill" style="width:'+execClamp+'%;background:'+(def.cls==='cost'?'var(--cost)':def.cls==='profit'?'var(--profit)':'var(--rev)')+'"></div></div><span class="exec-pct '+(exec>=95&&def.cls!=='cost'?'pos':def.cls==='cost'&&exec>100?'neg':'')+'">'+Math.round(exec)+'%</span></div>';
+    card.innerHTML =
+      '<div class="kpi-label">'+def.label+'</div>'+
+      '<div class="kpi-value">'+fmtRub(v.f26)+' <span style="font-size:12px;color:var(--text3);font-weight:400;">₽</span></div>'+
+      '<div class="kpi-sub">'+
+        '<div class="kpi-row"><b>План 2026</b><span>'+fmtRub(v.p26)+'</span></div>'+
+        '<div class="kpi-row"><b>Факт 2025</b><span>'+fmtRub(v.f25)+'</span></div>'+
+      '</div>'+execHtml;
+    grid.appendChild(card);
+  });
+}
+
+// ── Charts ──
+var charts={};
+function renderCharts(){
+  var rev=getRow('1.'), cost=getRow('2.');
+  var lf=lastFactMonth(RAW[state.doc]);
+
+  // 1) Month chart: plan vs fact (revenue)
+  var planArr=rev?rev.mp26.map(function(v){return v||0;}):[];
+  var factArr=rev?rev.mf26.map(function(v,i){return i<=lf?(v||0):null;}):[];
+  if(charts.month)charts.month.destroy();
+  charts.month=new Chart(document.getElementById('chart-month'),{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[
+      {label:'План 2026',data:planArr,backgroundColor:PLAN,borderRadius:3},
+      {label:'Факт 2026',data:factArr,backgroundColor:REV,borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fmtFull(c.raw);}}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:function(v){return fmtRub(v);}}}}}
+  });
+
+  // 2) Structure: revenue categories plan vs fact (for period)
+  var cats = state.doc==='bdr'
+    ? ['1.1.','1.2.','1.4.','1.5.','1.3.','1.6.']
+    : ['1.1.','1.2.','1.4.','1.5.','1.3.','1.6.'];
+  var catRows=cats.map(getRow).filter(Boolean);
+  var labels=catRows.map(function(r){return r.name.length>16?r.name.slice(0,15)+'…':r.name;});
+  var planV=catRows.map(function(r){return sumPeriod(r,'p26')||0;});
+  var factV=catRows.map(function(r){return sumPeriod(r,'f26')||0;});
+  if(charts.struct)charts.struct.destroy();
+  charts.struct=new Chart(document.getElementById('chart-struct'),{
+    type:'bar',
+    data:{labels:labels,datasets:[
+      {label:'План',data:planV,backgroundColor:PLAN,borderRadius:3},
+      {label:'Факт',data:factV,backgroundColor:REV,borderRadius:3}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fmtFull(c.raw);}}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:function(v){return fmtRub(v);}}},y:{grid:{display:false}}}}
+  });
+
+  // 3) Bottom line: operating profit per month (rev-cost) plan vs fact
+  var opPlan=[],opFact=[];
+  for(var m=0;m<12;m++){
+    var rp=rev?rev.mp26[m]:null, cp=cost?cost.mp26[m]:null;
+    var rf=rev?rev.mf26[m]:null, cf=cost?cost.mf26[m]:null;
+    opPlan.push((rp!=null||cp!=null)?((rp||0)-(cp||0)):null);
+    opFact.push(m<=lf?((rf||0)-(cf||0)):null);
+  }
+  if(charts.bottom)charts.bottom.destroy();
+  charts.bottom=new Chart(document.getElementById('chart-bottom'),{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[
+      {label:'Опер. прибыль · План',data:opPlan,backgroundColor:PLAN,borderRadius:3},
+      {label:'Опер. прибыль · Факт',data:opFact,backgroundColor:opFact.map(function(v){return v==null?PROFIT:(v>=0?PROFIT:'#e07070');}),borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fmtFull(c.raw);}}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:function(v){return fmtRub(v);}}}}}
+  });
+}
+
+// ── Tree ──
+var collapsed={};  // code -> true if collapsed
+
+function hasChildren(rows,idx){
+  var lvl=rows[idx].level;
+  if(lvl===0) return false;
+  for(var j=idx+1;j<rows.length;j++){
+    if(rows[j].level===0) return false;
+    if(rows[j].level>lvl) return true;
+    if(rows[j].level<=lvl) return false;
+  }
+  return false;
+}
+// is row hidden by a collapsed ancestor?
+function isHidden(rows,idx){
+  var lvl=rows[idx].level;
+  if(lvl<=1) return false;
+  // walk back to find ancestors
+  var curLvl=lvl;
+  for(var j=idx-1;j>=0;j--){
+    if(rows[j].level===0) continue;
+    if(rows[j].level<curLvl){
+      if(collapsed[rows[j].code]) return true;
+      curLvl=rows[j].level;
+      if(curLvl<=1) break;
+    }
+  }
+  return false;
+}
+
+function renderTree(){
+  var rows=RAW[state.doc].filter(function(r){return r.kind!=='kpi' && !r.isRatio;});
+  var tbody=document.getElementById('tree-body'); tbody.innerHTML='';
+  rows.forEach(function(r,idx){
+    if(isHidden(rows,idx)) return;
+    var f25=sumPeriod(r,'f25'), p26=sumPeriod(r,'p26'), f26=sumPeriod(r,'f26');
+    var exec=(p26&&p26!==0)?(f26/p26*100):null;
+    var delta=(f26!=null&&p26!=null)?(f26-p26):null;
+    var isCost = r.code.charAt(0)==='2';
+    // for costs, under plan is good (pos); for revenue, over plan is good
+    var deltaGood = isCost ? (delta<=0) : (delta>=0);
+    var tr=document.createElement('tr');
+    var lvlClass = r.level>=1?('lvl'+Math.min(r.level,4)):'';
+    if(r.kind==='total') tr.className='row-total'+((f26!=null&&f26<0)?' neg':'');
+    else tr.className=lvlClass;
+    var kids=hasChildren(rows,idx);
+    var indent=(r.level>1)?((r.level-1)*16):0;
+    var toggle = kids
+      ? '<span class="tree-toggle" onclick="toggleNode(\''+r.code.replace(/'/g,"")+'\')">'+(collapsed[r.code]?'▸':'▾')+'</span>'
+      : '<span class="tree-toggle empty"></span>';
+    var deltaChip = delta==null?'<span class="muted">—</span>'
+      : '<span class="delta-chip '+(delta===0?'neu':deltaGood?'pos':'neg')+'">'+(delta>=0?'+':'')+fmtRub(delta)+'</span>';
+    var execHtml = exec==null?'<span class="muted">—</span>'
+      : '<span class="'+(exec>=95?'pos':exec<70?'neg':'')+'">'+Math.round(exec)+'%</span>';
+    tr.innerHTML=
+      '<td><div class="tree-name" style="padding-left:'+indent+'px">'+toggle+
+        '<span class="tree-code">'+(r.code||'')+'</span> <span class="tree-label">'+r.name+'</span></div></td>'+
+      '<td class="num muted">'+fmtRub(f25)+'</td>'+
+      '<td class="num">'+fmtRub(p26)+'</td>'+
+      '<td class="num"><b>'+fmtRub(f26)+'</b></td>'+
+      '<td class="num">'+execHtml+'</td>'+
+      '<td class="num">'+deltaChip+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleNode(code){ collapsed[code]=!collapsed[code]; renderTree(); }
+function expandAll(){ collapsed={}; renderTree(); }
+function collapseAll(){
+  collapsed={};
+  RAW[state.doc].forEach(function(r){ if(r.level>=2) collapsed[r.code]=true; });
+  renderTree();
+}
+
+// default: collapse level>=3 (show level 1-2)
+function defaultCollapse(){
+  collapsed={};
+  RAW[state.doc].forEach(function(r){ if(r.level>=2) collapsed[r.code]=true; });
+}
+
+// ── state setters ──
+function setDoc(d){
+  state.doc=d;
+  document.getElementById('db-bdr').classList.toggle('active',d==='bdr');
+  document.getElementById('db-bdds').classList.toggle('active',d==='bdds');
+  document.getElementById('nav-bdr').classList.toggle('active',d==='bdr');
+  document.getElementById('nav-bdds').classList.toggle('active',d==='bdds');
+  document.getElementById('doc-title').textContent = d==='bdr'?'Бюджет доходов и расходов':'Бюджет движения денежных средств';
+  document.getElementById('doc-desc').textContent = DESC[d];
+  document.getElementById('chart-rev-title').textContent='Выручка: план vs факт по месяцам';
+  defaultCollapse();
+  renderAll();
+}
+function setPeriod(p,btn){
+  state.period=p; state.month=-1;
+  document.getElementById('month-sel').value='-1';
+  document.querySelectorAll('#period-btns .btn-pill').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderAll();
+}
+function setMonth(m){
+  state.month=parseInt(m);
+  if(state.month>=0){ document.querySelectorAll('#period-btns .btn-pill').forEach(function(b){b.classList.remove('active');}); }
+  else { document.querySelector('#period-btns .btn-pill[data-p="ytd"]').classList.add('active'); state.period='ytd'; }
+  renderAll();
+}
+
+function updateNote(){
+  var lf=lastFactMonth(RAW[state.doc]);
+  var note=document.getElementById('period-note');
+  if(state.month>=0){ note.textContent='Месяц: '+MONTHS[state.month]; note.style.color='var(--text3)'; }
+  else if(state.period==='ytd'){ note.textContent='⚠ Факт за Янв–'+MONTHS[lf]+' · план за тот же период'; note.style.color='var(--warn)'; }
+  else if(state.period==='year'){ note.textContent='⚠ План — год целиком, факт — только Янв–'+MONTHS[lf]; note.style.color='var(--warn)'; }
+  else { note.textContent=''; }
+}
+
+function renderAll(){ updateNote(); renderKPI(); renderCharts(); renderTree(); }
+
+// ── boot ──
+function boot(){
+  if(!RAW.bdr.length){ document.querySelector('.main').innerHTML='<p style="padding:60px;color:var(--text2)">Нет данных бюджета. Запустите build_budget.ps1</p>'; return; }
+  document.getElementById('doc-desc').textContent=DESC.bdr;
+  if(RAW.generated){ document.getElementById('sb-updated').textContent='Обновлено '+RAW.generated; document.getElementById('hdr-updated').textContent=RAW.generated; }
+  defaultCollapse();
+  renderAll();
+}
+boot();
+</script>
+</body>
+</html>

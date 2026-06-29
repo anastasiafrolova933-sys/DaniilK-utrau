@@ -45,3 +45,29 @@ if ($fail -eq 0) {
     Write-Host "Running build.ps1..." -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot "build.ps1")
 }
+
+# ---- Budget workbook (separate sheet) ----
+$BUDGET_ID = "1q-5vyXwY0zgB1VtzPh8hn2ZmZ3ieuiMp-u15rIwb1Pg"
+$BUDGET_TABS = @{
+    "tab1" = "1663630612"   # BDR (P&L)
+    "tab2" = "1954215925"   # BDDS (cash flow)
+}
+$budgetDir = Join-Path $DATA_DIR "budget_raw"
+New-Item -ItemType Directory -Force -Path $budgetDir | Out-Null
+$bok = 0; $bfail = 0
+foreach ($k in ($BUDGET_TABS.Keys | Sort-Object)) {
+    $gid = $BUDGET_TABS[$k]
+    $url = "https://docs.google.com/spreadsheets/d/$BUDGET_ID/export?format=csv" + "&gid=$gid"
+    try {
+        Invoke-WebRequest -Uri $url -OutFile (Join-Path $budgetDir "$k.csv") -UseBasicParsing -ErrorAction Stop
+        Write-Host "[budget/$k] OK" -ForegroundColor Green
+        $bok++
+    } catch {
+        Write-Host "[budget/$k] ERROR: $_" -ForegroundColor Red
+        $bfail++
+    }
+}
+if ($bfail -eq 0 -and $bok -gt 0) {
+    Write-Host "Running build_budget.ps1..." -ForegroundColor Cyan
+    & (Join-Path $PSScriptRoot "build_budget.ps1")
+}
