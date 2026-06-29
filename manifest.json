@@ -1,0 +1,23 @@
+{
+  "name": "Загородный клуб Утрау — Отчёты",
+  "short_name": "Утрау Отчёты",
+  "description": "Внутренний портал отчётов загородного клуба «Утрау»: доходность, загрузка, бюджет (БДР и БДДС).",
+  "start_url": "/DaniilK-utrau/reports.html",
+  "scope": "/DaniilK-utrau/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080c08",
+  "theme_color": "#080c08",
+  "lang": "ru",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Доходность и загрузка", "short_name": "Доходность", "url": "/DaniilK-utrau/finance.html" },
+    { "name": "Бюджет — БДР и БДДС", "short_name": "Бюджет", "url": "/DaniilK-utrau/budget.html" }
+  ]
+}

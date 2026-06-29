@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Дашборд — Загородный клуб Утрау</title>
 <meta name="theme-color" content="#080c08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Утрау Доходность">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
@@ -941,8 +946,28 @@ function renderCompare() {
   });
 }
 
+// ── Данные для ИИ-чата ──
+window.__reportData = function(){
+  var cur = filterData(DATA, state.selYear, state.period, state.month);
+  var a = aggregate(cur);
+  var lines = ['Отчёт: Доходность и загрузка', 'Год: '+state.selYear+
+               ', период: '+(state.month>0?MONTHS_RU[state.month]:state.period)];
+  if(a) lines.push('Выручка: '+Math.round(a.revenue).toLocaleString('ru')+' ₽, загрузка: '+a.occ.toFixed(1)+
+                   '%, ADR: '+Math.round(a.adr)+' ₽, RevPAR: '+Math.round(a.revpar)+
+                   ' ₽, номероночей: '+Math.round(a.nights)+', ALS: '+a.als.toFixed(2));
+  // помесячно по выбранному году
+  var byM = monthlyAgg(filterData(DATA, state.selYear,'all',0));
+  lines.push('', 'По месяцам '+state.selYear+' (выручка / загрузка% / ADR):');
+  for(var m=1;m<=12;m++){ var ag=aggregate(byM[m]||[]); if(ag) lines.push('  '+MONTHS_RU[m]+': '+
+    Math.round(ag.revenue).toLocaleString('ru')+' / '+ag.occ.toFixed(1)+'% / '+Math.round(ag.adr)); }
+  return lines.join('\n');
+};
+
 // ── Boot ──────────────────────────────────────────────────────
 init();
 </script>
+<script src="js/pwa.js"></script>
+<script src="notify.js"></script>
+<script src="chat-widget.js" data-report="finance"></script>
 </body>
 </html>

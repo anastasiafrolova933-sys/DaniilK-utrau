@@ -38,22 +38,31 @@ try {
     git add data/ 2>&1 | Out-Null
     $status = (git status --porcelain 2>&1) -join ''
     if (-not $status) {
-        Log "No changes - skip push"
-        exit 0
-    }
-    $date = Get-Date -Format 'dd.MM.yyyy HH:mm'
-    git commit -m "Data update $date" 2>&1 | Out-Null
-    git pull --rebase origin master 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null }
-    git push origin HEAD:master 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Log "Pushed to GitHub Pages"
-        Log "  -> https://anastasiafrolova933-sys.github.io/DaniilK-utrau/finance.html"
+        Log "No changes - skip git push"
     } else {
-        Log "Push FAILED (exit $LASTEXITCODE)"
+        $date = Get-Date -Format 'dd.MM.yyyy HH:mm'
+        git commit -m "Data update $date" 2>&1 | Out-Null
+        git pull --rebase origin master 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null }
+        git push origin HEAD:master 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Log "Pushed to GitHub Pages -> .../finance.html"
+        } else {
+            Log "Push FAILED (exit $LASTEXITCODE)"
+        }
     }
 } finally {
     Pop-Location
+}
+
+# Push-notifications: daily digest + anomalies (requires local chat server on :8768)
+$PYTHON = 'C:\Users\CloudUser\AppData\Local\Programs\Python\Python312\python.exe'
+$notify = Join-Path $repo "backend\notify_push.py"
+if (Test-Path $notify) {
+    try {
+        $out = & $PYTHON $notify 2>&1
+        Log "notify_push: $($out -join ' | ')"
+    } catch { Log "notify_push FAILED: $_" }
 }
 
 Log "=== Auto-update done ==="

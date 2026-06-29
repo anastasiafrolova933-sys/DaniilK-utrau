@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Бюджет — Загородный клуб Утрау</title>
 <meta name="theme-color" content="#080c08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Утрау Бюджет">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
@@ -553,6 +558,29 @@ function updateNote(){
 
 function renderAll(){ updateNote(); renderKPI(); renderCharts(); renderTree(); }
 
+// ── Данные для ИИ-чата ──
+window.__reportData = function(){
+  var doc = state.doc==='bdr' ? 'БДР (прибыли/убытки)' : 'БДДС (движение денег)';
+  function m(v){return v==null?'—':(v/1e6).toFixed(2);}
+  var lines = ['Отчёт: Бюджет — '+doc,
+               'На экране выбран период: '+(state.month>=0?MONTHS[state.month]:state.period)+
+               ' (факт 2026 заполнен по май)',
+               'Формат: Факт2025 / План2026 / Факт2026, млн руб', ''];
+  // Годовые итоги (полный год) — основные цифры
+  lines.push('=== ГОД ЦЕЛИКОМ ===');
+  RAW[state.doc].filter(function(r){return !r.isRatio && r.kind!=='kpi' && r.level<=2 && r.code;}).forEach(function(r){
+    lines.push((r.level===1?'■ ':'  ')+r.code+' '+r.name+': '+m(r.year.f25)+' / '+m(r.year.p26)+' / '+m(r.year.f26));
+  });
+  // За выбранный на экране период (если не год)
+  if(!(state.month<0 && state.period==='year')){
+    lines.push('', '=== ЗА ВЫБРАННЫЙ ПЕРИОД ('+(state.month>=0?MONTHS[state.month]:state.period)+') ===');
+    RAW[state.doc].filter(function(r){return !r.isRatio && r.kind!=='kpi' && r.level===1 && r.code;}).forEach(function(r){
+      lines.push('■ '+r.code+' '+r.name+': '+m(sumPeriod(r,'f25'))+' / '+m(sumPeriod(r,'p26'))+' / '+m(sumPeriod(r,'f26')));
+    });
+  }
+  return lines.join('\n');
+};
+
 // ── boot ──
 function boot(){
   if(!RAW.bdr.length){ document.querySelector('.main').innerHTML='<p style="padding:60px;color:var(--text2)">Нет данных бюджета. Запустите build_budget.ps1</p>'; return; }
@@ -563,5 +591,8 @@ function boot(){
 }
 boot();
 </script>
+<script src="js/pwa.js"></script>
+<script src="notify.js"></script>
+<script src="chat-widget.js" data-report="budget"></script>
 </body>
 </html>

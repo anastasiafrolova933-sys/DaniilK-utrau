@@ -4,6 +4,9 @@ data/update.log
 # Локальный конфиг превью
 .claude/
 
+# Бэкенд чата/push — серверный, с секретами (.env, VAPID, ключ API), НЕ публикуется
+backend/
+
 # Системные
 Thumbs.db
 .DS_Store
