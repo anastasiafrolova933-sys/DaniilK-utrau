@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://proceeding-wrapping-knowing-welfare.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://grab-leo-suburban-specializing.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
