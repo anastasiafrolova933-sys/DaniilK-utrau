@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F&B — Загородный клуб Утрау</title>
+<meta name="theme-color" content="#080c08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Утрау F&B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="data/fnb_data.js"></script>
+<style>
+:root{
+  --bg:#080c08; --bg2:#0f1610; --surface:#131a13;
+  --border:rgba(255,255,255,0.07); --border-h:rgba(255,255,255,0.14);
+  --text:#eeeae4; --text2:rgba(238,234,228,0.50); --text3:rgba(238,234,228,0.25);
+  --accent:#4fb8b0; --accent2:#4da6d9; --neg:#e07070; --pos:#7ec88a; --warn:#e0b070;
+  --rev:#4fb8b0; --cost:#e0a070; --fc:#e0b070; --wo:#c98ada;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50;padding:24px 0;}
+.main{margin-left:220px;padding:32px 36px;min-height:100vh;}
+.sb-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.sb-logo svg{height:36px;opacity:.9;}
+.sb-logo-name{font-size:12px;color:var(--text2);margin-top:8px;letter-spacing:.04em;}
+.sb-nav{flex:1;overflow-y:auto;}
+.sb-section{padding:4px 20px 16px;}
+.sb-section-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-weight:500;}
+.sb-link{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);text-decoration:none;transition:.15s;margin-bottom:2px;}
+.sb-link:hover{background:rgba(255,255,255,.05);color:var(--text);}
+.sb-link.active{background:rgba(79,184,176,.12);color:var(--accent);}
+.sb-link-icon{width:16px;text-align:center;opacity:.6;}
+.sb-bottom{padding:16px 20px;border-top:1px solid var(--border);}
+.sb-updated{font-size:10px;color:var(--text3);letter-spacing:.04em;}
+.back-link{display:block;font-size:11px;color:var(--text3);text-decoration:none;letter-spacing:.1em;text-transform:uppercase;margin-top:10px;transition:color .2s;}
+.back-link:hover{color:var(--accent);}
+
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px;}
+.page-title{font-family:'Cormorant',serif;font-size:28px;font-weight:300;font-style:italic;}
+.page-sub{font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+
+.filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:24px;}
+.filter-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;white-space:nowrap;}
+.filter-sep{width:1px;height:24px;background:var(--border);margin:0 4px;}
+.btn-group{display:flex;gap:2px;flex-wrap:wrap;}
+.btn-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;}
+.btn-pill:hover{border-color:var(--border-h);color:var(--text);}
+.btn-pill.active{background:rgba(79,184,176,.15);border-color:var(--accent);color:var(--accent);}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.kpi-card.rev::before{background:var(--rev);}
+.kpi-card.cost::before{background:var(--cost);}
+.kpi-card.fc::before{background:var(--fc);}
+.kpi-card.wo::before{background:var(--wo);}
+.kpi-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:10px;}
+.kpi-value{font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.1;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:7px;}
+
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;}
+.chart-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:16px;}
+.chart-wrap{position:relative;}
+
+.section-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);font-weight:500;margin:28px 0 16px;display:flex;align-items:center;gap:14px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+table.tbl{width:100%;border-collapse:collapse;}
+table.tbl th,table.tbl td{padding:9px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap;}
+table.tbl th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:500;background:rgba(255,255,255,.02);}
+table.tbl th:first-child,table.tbl td:first-child{text-align:left;white-space:normal;}
+table.tbl td.num{font-variant-numeric:tabular-nums;}
+table.tbl tr:hover td{background:rgba(255,255,255,.025);}
+.fc-good{color:var(--pos);} .fc-mid{color:var(--warn);} .fc-bad{color:var(--neg);}
+.muted{color:var(--text3);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.bar-mini{height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:4px;}
+.bar-mini>div{height:100%;border-radius:3px;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.charts-row,.two-col{grid-template-columns:1fr;}}
+@media(max-width:768px){.sidebar{display:none;}.main{margin-left:0;padding:18px 12px;}.kpi-grid{grid-template-columns:1fr 1fr;}.panel{overflow-x:auto;}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg viewBox="0 0 120 100" fill="none">
+      <ellipse cx="60" cy="30" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5"/>
+      <ellipse cx="40" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(-42 40 38)"/>
+      <ellipse cx="80" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(42 80 38)"/>
+      <ellipse cx="40" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(42 40 62)"/>
+      <ellipse cx="80" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(-42 80 62)"/>
+    </svg>
+    <div class="sb-logo-name">Загородный клуб «Утрау»</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">
+      <div class="sb-section-label">Отчёты</div>
+      <a class="sb-link" href="finance.html"><span class="sb-link-icon">◉</span> Доходность</a>
+      <a class="sb-link" href="budget.html"><span class="sb-link-icon">▤</span> Бюджет</a>
+      <a class="sb-link active" href="#"><span class="sb-link-icon">🍽</span> F&B питание</a>
+      <a class="sb-link" href="reports.html"><span class="sb-link-icon">⌂</span> Портал</a>
+    </div>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sb-updated" id="sb-updated">—</div>
+    <a class="back-link" href="reports.html">← Портал</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">F&B · Служба питания</div>
+      <div class="page-sub">Ресторан Утрау · выручка, фудкост, списания по типам</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:11px;color:var(--text3);">Обновлено</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px;" id="hdr-updated">—</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Месяц</span>
+    <div class="btn-group" id="month-btns"></div>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Тип</span>
+    <div class="btn-group" id="type-btns">
+      <button class="btn-pill active" data-type="all" onclick="setType('all',this)">Все</button>
+      <button class="btn-pill" data-type="alacarte" onclick="setType('alacarte',this)">А-ля карт</button>
+      <button class="btn-pill" data-type="bar" onclick="setType('bar',this)">Бар</button>
+      <button class="btn-pill" data-type="banquet" onclick="setType('banquet',this)">Банкеты</button>
+      <button class="btn-pill" data-type="breakfast" onclick="setType('breakfast',this)">Шведка-завтраки</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Структура выручки по типам</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-rev"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Фудкост по типам, % (ниже — лучше)</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-fc"></canvas></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="section-label" id="dishes-label">Топ блюд по выручке</div>
+      <div class="panel" style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th>Блюдо</th><th>Кол-во</th><th>Выручка</th><th>Фудкост</th></tr></thead>
+          <tbody id="dishes-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">Списания (за счёт компании)</div>
+      <div class="panel" style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th>Причина</th><th>Сумма</th><th>Доля</th></tr></thead>
+          <tbody id="wo-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Банкеты — реестр мероприятий</div>
+  <div class="panel" style="overflow-x:auto;">
+    <table class="tbl">
+      <thead><tr><th>Дата</th><th>Заказчик</th><th>Формат</th><th>Гостей</th><th>Меню</th><th>Фудкост</th><th>Ср. чек</th><th>Итого</th><th>Доход</th></tr></thead>
+      <tbody id="banquet-body"></tbody>
+    </table>
+  </div>
+
+  <div class="section-label">Товарный остаток (начало · закуп · конец)</div>
+  <div class="panel" style="overflow-x:auto;margin-bottom:16px;">
+    <table class="tbl">
+      <thead><tr><th>Склад</th><th>Начало</th><th>Закуп</th><th>Конец</th></tr></thead>
+      <tbody id="inv-body"></tbody>
+    </table>
+  </div>
+
+  <div style="font-size:11px;color:var(--text3);margin-top:16px;line-height:1.6;">
+    <b style="color:var(--text2);">Примечания.</b> Источник цифр — сводный отчёт F&B (сверен в копейку с выгрузками iiko).
+    Фудкост = себестоимость / выручка. «Бар» = напитки + алкоголь. «Шведка-завтраки» = шведский стол.
+    Данные обновляются ежемесячно после выгрузки iiko.
+  </div>
+</main>
+
+<script>
+var RAW = window.UTRAU_FNB || {months:{}, generated:''};
+var MONTH_NAMES = {'01':'Январь','02':'Февраль','03':'Март','04':'Апрель','05':'Май','06':'Июнь','07':'Июль','08':'Август','09':'Сентябрь','10':'Октябрь','11':'Ноябрь','12':'Декабрь'};
+var state = { month: null, type: 'all' };
+
+Chart.defaults.color='rgba(238,234,228,0.45)';
+Chart.defaults.borderColor='rgba(255,255,255,0.07)';
+Chart.defaults.font.family="'DM Sans',sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.plugins.legend.labels.boxWidth=10;
+Chart.defaults.plugins.legend.labels.padding=12;
+
+function fmtRub(v){ if(v==null) return '—'; var a=Math.abs(v);
+  if(a>=1e6) return (v/1e6).toFixed(2).replace('.',',')+' млн';
+  if(a>=1e3) return Math.round(v/1e3)+' тыс'; return Math.round(v).toLocaleString('ru'); }
+function fmtFull(v){ if(v==null) return '—'; return Math.round(v).toLocaleString('ru')+' ₽'; }
+function fmtPct(v){ if(v==null) return '—'; return v.toFixed(1).replace('.',',')+'%'; }
+function fcClass(v){ if(v==null) return ''; if(v<30) return 'fc-good'; if(v<40) return 'fc-mid'; return 'fc-bad'; }
+
+// ── Тип -> данные сводки ──
+var TYPES = {
+  all:       {name:'Все типы',     color:'#4fb8b0'},
+  alacarte:  {name:'А-ля карт',    color:'#4fb8b0'},
+  bar:       {name:'Бар',          color:'#4da6d9'},
+  banquet:   {name:'Банкеты',      color:'#c98ada'},
+  breakfast: {name:'Шведка-завтраки', color:'#e0b070'}
+};
+
+function S(){ return RAW.months[state.month].summary; }
+function sales(){ return RAW.months[state.month].sales; }
+
+// выручка/себест/фк/чек/гости по типу
+function typeMetrics(t){
+  var s = S();
+  switch(t){
+    case 'alacarte': return {rev:s.rev_kitchen, cost:s.cogs_alacarte, fc:s.fc_alacarte, check:s.check_alacarte, guests:s.guests_alacarte};
+    case 'bar':      return {rev:(s.rev_bar_soft||0)+(s.rev_bar_alco||0), cost:null, fc:s.fc_bar, check:null, guests:null};
+    case 'banquet':  return {rev:s.rev_banquet_food, cost:s.cogs_banquet, fc:s.fc_banquet, check:s.check_banquet, guests:s.guests_banquet};
+    case 'breakfast':return {rev:s.rev_breakfast, cost:s.cogs_breakfast, fc:s.fc_breakfast, check:null, guests:null};
+    default:         return {rev:s.income_total, cost:s.cost_total, fc:s.fc_total, check:null, guests:(s.guests_alacarte||0)+(s.guests_banquet||0)};
+  }
+}
+
+function writeoffs(){
+  var s=S();
+  return [
+    {name:'Питание сотрудников', v:s.wo_staff},
+    {name:'Комплименты', v:s.wo_comp},
+    {name:'Удаления со списанием', v:s.wo_deletions},
+    {name:'Закрыто без оплаты', v:s.wo_free},
+    {name:'Порча', v:s.wo_spoilage},
+    {name:'Проработка блюд', v:s.wo_dev},
+    {name:'Представительские', v:s.wo_represent}
+  ].filter(function(x){return x.v!=null;}).sort(function(a,b){return (b.v||0)-(a.v||0);});
+}
+
+// ── KPI ──
+function renderKPI(){
+  var m = typeMetrics(state.type), s=S();
+  var grid=document.getElementById('kpi-grid'); grid.innerHTML='';
+  var woTotal = (s.wo_comp||0)+(s.wo_spoilage||0)+(s.wo_represent||0)+(s.wo_deletions||0)+(s.wo_staff||0)+(s.wo_free||0)+(s.wo_dev||0);
+  var cards = [
+    {cls:'rev', label: state.type==='all'?'Выручка СПиН':'Выручка', val:fmtRub(m.rev)+' ₽', sub: state.type==='all'?'итого приход ДС':TYPES[state.type].name},
+    {cls:'fc', label:'Фудкост', val:fmtPct(m.fc), sub:'себестоимость / выручка'},
+    {cls:'cost', label:'Себестоимость', val:m.cost!=null?fmtRub(m.cost)+' ₽':'—', sub:'продукты и напитки'},
+    state.type==='all'
+      ? {cls:'wo', label:'Списания', val:fmtRub(woTotal)+' ₽', sub:'за счёт компании'}
+      : {cls:'', label:m.check!=null?'Средний чек':'Гостей', val: m.check!=null?fmtRub(m.check)+' ₽':(m.guests!=null?fmtRub(m.guests):'—'), sub: m.check!=null?'на гостя':'за месяц'}
+  ];
+  cards.forEach(function(c){
+    var el=document.createElement('div'); el.className='kpi-card '+c.cls;
+    el.innerHTML='<div class="kpi-label">'+c.label+'</div><div class="kpi-value">'+c.val+'</div><div class="kpi-sub">'+c.sub+'</div>';
+    grid.appendChild(el);
+  });
+}
+
+// ── Charts ──
+var charts={};
+function renderCharts(){
+  var s=S();
+  var types=['alacarte','bar','banquet','breakfast'];
+  var labels=types.map(function(t){return TYPES[t].name;});
+  var revs=types.map(function(t){return typeMetrics(t).rev||0;});
+  var fcs=types.map(function(t){return typeMetrics(t).fc||0;});
+  var colors=types.map(function(t){return TYPES[t].color;});
+
+  if(charts.rev)charts.rev.destroy();
+  charts.rev=new Chart(document.getElementById('chart-rev'),{
+    type:'doughnut',
+    data:{labels:labels,datasets:[{data:revs,backgroundColor:colors,borderColor:'#0f1610',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'right'},tooltip:{callbacks:{label:function(c){return c.label+': '+fmtFull(c.raw);}}}}}
+  });
+  if(charts.fc)charts.fc.destroy();
+  charts.fc=new Chart(document.getElementById('chart-fc'),{
+    type:'bar',
+    data:{labels:labels,datasets:[{data:fcs,backgroundColor:colors,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtPct(c.raw);}}}},
+      scales:{x:{ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,0.04)'}},y:{grid:{display:false}}}}
+  });
+}
+
+// ── Dishes (top by revenue, filtered by type) ──
+function dishesForType(){
+  var sl=sales();
+  if(state.type==='bar') return (sl.bar_soft||[]).concat(sl.bar_alco||[]);
+  if(state.type==='alacarte') return sl.alacarte||[];
+  if(state.type==='banquet') return sl.banquet||[];
+  if(state.type==='breakfast') return sl.breakfast||[];
+  // all: kitchen + bar + banquet
+  return (sl.alacarte||[]).concat(sl.bar_soft||[],sl.bar_alco||[],sl.banquet||[]);
+}
+function renderDishes(){
+  var rows=dishesForType().filter(function(d){return (d.rev||0)>0;})
+    .sort(function(a,b){return (b.rev||0)-(a.rev||0);}).slice(0,15);
+  document.getElementById('dishes-label').textContent='Топ блюд по выручке — '+TYPES[state.type].name;
+  var tb=document.getElementById('dishes-body'); tb.innerHTML='';
+  rows.forEach(function(d){
+    var fc=(d.rev>0)?(d.cost/d.rev*100):null;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+d.name+'</td><td class="num muted">'+(d.qty!=null?d.qty.toFixed(0):'—')+
+      '</td><td class="num">'+fmtFull(d.rev)+'</td><td class="num '+fcClass(fc)+'">'+(fc!=null?fmtPct(fc):'—')+'</td>';
+    tb.appendChild(tr);
+  });
+  if(!rows.length) tb.innerHTML='<tr><td colspan="4" class="muted" style="text-align:center;padding:20px;">Нет данных по типу</td></tr>';
+}
+
+// ── Write-offs ──
+function renderWO(){
+  var wo=writeoffs(), total=wo.reduce(function(s,x){return s+(x.v||0);},0);
+  var tb=document.getElementById('wo-body'); tb.innerHTML='';
+  wo.forEach(function(x){
+    var pct=total>0?(x.v/total*100):0;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+x.name+'<div class="bar-mini"><div style="width:'+pct.toFixed(0)+'%;background:var(--wo)"></div></div></td>'+
+      '<td class="num">'+fmtFull(x.v)+'</td><td class="num muted">'+pct.toFixed(0)+'%</td>';
+    tb.appendChild(tr);
+  });
+  var tr=document.createElement('tr'); tr.style.fontWeight='600';
+  tr.innerHTML='<td>Итого списаний</td><td class="num">'+fmtFull(total)+'</td><td class="num muted">100%</td>';
+  tb.appendChild(tr);
+}
+
+// ── Banquets ──
+function renderBanquets(){
+  var b=RAW.months[state.month].banquets||[];
+  var tb=document.getElementById('banquet-body'); tb.innerHTML='';
+  if(!b.length){ tb.innerHTML='<tr><td colspan="9" class="muted" style="text-align:center;padding:20px;">Нет банкетов в этом месяце</td></tr>'; return; }
+  b.forEach(function(e){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+e.date+'</td><td>'+e.customer+'</td><td class="muted">'+(e.format||'')+
+      '</td><td class="num">'+(e.guests!=null?e.guests.toFixed(0):'—')+'</td><td class="num">'+fmtFull(e.menu)+
+      '</td><td class="num '+fcClass(e.fc)+'">'+(e.fc!=null?fmtPct(e.fc):'—')+'</td><td class="num">'+fmtFull(e.check)+
+      '</td><td class="num">'+fmtFull(e.total)+'</td><td class="num" style="color:var(--pos)">'+fmtFull(e.profit)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+// ── Inventory ──
+function renderInv(){
+  var s=S();
+  var tb=document.getElementById('inv-body'); tb.innerHTML='';
+  [['Кухня',s.inv_kitchen_start,s.inv_kitchen_buy,s.inv_kitchen_end],
+   ['Бар',s.inv_bar_start,s.inv_bar_buy,s.inv_bar_end]].forEach(function(r){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+r[0]+'</td><td class="num">'+fmtFull(r[1])+'</td><td class="num">'+fmtFull(r[2])+'</td><td class="num">'+fmtFull(r[3])+'</td>';
+    tb.appendChild(tr);
+  });
+  var tr=document.createElement('tr'); tr.style.fontWeight='600';
+  tr.innerHTML='<td>Итого остаток</td><td class="num muted">—</td><td class="num muted">—</td><td class="num">'+fmtFull(s.inv_total)+'</td>';
+  tb.appendChild(tr);
+}
+
+function renderAll(){ renderKPI(); renderCharts(); renderDishes(); renderWO(); renderBanquets(); renderInv(); }
+
+function setType(t,btn){
+  state.type=t;
+  document.querySelectorAll('#type-btns .btn-pill').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderAll();
+}
+function setMonth(mo,btn){
+  state.month=mo;
+  document.querySelectorAll('#month-btns .btn-pill').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderAll();
+}
+
+// ── Данные для ИИ-чата ──
+window.__reportData=function(){
+  var s=S();
+  var L=['Отчёт: F&B Служба питания, месяц '+state.month, 'Выбран тип: '+TYPES[state.type].name, ''];
+  L.push('Выручка СПиН: '+Math.round(s.income_total).toLocaleString('ru')+' ₽, общий фудкост '+s.fc_total+'%');
+  L.push('По типам (выручка / фудкост%):');
+  ['alacarte','bar','banquet','breakfast'].forEach(function(t){var m=typeMetrics(t);L.push('  '+TYPES[t].name+': '+Math.round(m.rev||0).toLocaleString('ru')+' / '+(m.fc||'—')+'%');});
+  L.push('Гости: а-ля карт '+s.guests_alacarte+', банкеты '+s.guests_banquet+'; ср.чек а-ля карт '+s.check_alacarte+', банкет '+s.check_banquet);
+  L.push('Списания: '+writeoffs().map(function(x){return x.name+' '+Math.round(x.v);}).join(', '));
+  return L.join('\n');
+};
+
+// ── boot ──
+function boot(){
+  var months=Object.keys(RAW.months).sort();
+  if(!months.length){ document.querySelector('.main').innerHTML='<p style="padding:60px;color:var(--text2)">Нет данных F&B. Запустите build_fnb.py</p>'; return; }
+  state.month=months[months.length-1];
+  var mb=document.getElementById('month-btns'); mb.innerHTML='';
+  months.forEach(function(mo){
+    var btn=document.createElement('button'); btn.className='btn-pill'+(mo===state.month?' active':'');
+    var parts=mo.split('-'); btn.textContent=(MONTH_NAMES[parts[1]]||parts[1])+' '+parts[0];
+    btn.onclick=function(){ setMonth(mo,btn); };
+    mb.appendChild(btn);
+  });
+  if(RAW.generated){ document.getElementById('sb-updated').textContent='Обновлено '+RAW.generated; document.getElementById('hdr-updated').textContent=RAW.generated; }
+  renderAll();
+}
+boot();
+</script>
+<script src="js/pwa.js"></script>
+<script src="notify.js"></script>
+<script src="chat-widget.js" data-report="fnb"></script>
+</body>
+</html>

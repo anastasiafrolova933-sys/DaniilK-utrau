@@ -71,3 +71,11 @@ if ($bfail -eq 0 -and $bok -gt 0) {
     Write-Host "Running build_budget.ps1..." -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot "build_budget.ps1")
 }
+
+# ---- F&B (Служба питания) — отдельная пара Google-таблиц, парсер на Python ----
+$PYTHON = 'C:\Users\CloudUser\AppData\Local\Programs\Python\Python312\python.exe'
+$buildFnb = Join-Path $PSScriptRoot "build_fnb.py"
+if ((Test-Path $PYTHON) -and (Test-Path $buildFnb)) {
+    Write-Host "Running build_fnb.py..." -ForegroundColor Cyan
+    & $PYTHON $buildFnb
+}
