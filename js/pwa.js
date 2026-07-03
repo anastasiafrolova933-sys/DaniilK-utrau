@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://stack-television-regularly-nest.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://mods-favorite-accepted-attacks.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
