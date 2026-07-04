@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var DEFAULT_SERVER = 'https://mods-favorite-accepted-attacks.trycloudflare.com'; // подменяется start_server.ps1 на туннель
+  var DEFAULT_SERVER = 'https://interview-feb-acoustic-chains.trycloudflare.com'; // подменяется start_server.ps1 на туннель
   var serverUrl = null;
 
   function detectReportId() {
