@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://interview-feb-acoustic-chains.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://recommended-schedules-consistency-undergraduate.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
