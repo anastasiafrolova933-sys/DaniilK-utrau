@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>СПА · Банный комплекс — Утрау</title>
+<meta name="theme-color" content="#080c08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Утрау СПА">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="data/spa_data.js"></script>
+<style>
+:root{
+  --bg:#080c08; --bg2:#0f1610; --surface:#131a13;
+  --border:rgba(255,255,255,0.07); --border-h:rgba(255,255,255,0.14);
+  --text:#eeeae4; --text2:rgba(238,234,228,0.50); --text3:rgba(238,234,228,0.25);
+  --accent:#4fb8b0; --accent2:#4da6d9; --pos:#7ec88a; --warn:#e0b070;
+  --c24:#4da6d9; --c25:#4fb8b0; --c26:#7ec88a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50;padding:24px 0;}
+.main{margin-left:220px;padding:32px 36px;min-height:100vh;}
+.sb-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.sb-logo svg{height:36px;opacity:.9;}
+.sb-logo-name{font-size:12px;color:var(--text2);margin-top:8px;letter-spacing:.04em;}
+.sb-nav{flex:1;overflow-y:auto;}
+.sb-section{padding:4px 20px 16px;}
+.sb-section-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-weight:500;}
+.sb-link{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);text-decoration:none;transition:.15s;margin-bottom:2px;}
+.sb-link:hover{background:rgba(255,255,255,.05);color:var(--text);}
+.sb-link.active{background:rgba(79,184,176,.12);color:var(--accent);}
+.sb-link-icon{width:16px;text-align:center;opacity:.6;}
+.sb-bottom{padding:16px 20px;border-top:1px solid var(--border);}
+.sb-updated{font-size:10px;color:var(--text3);letter-spacing:.04em;}
+.back-link{display:block;font-size:11px;color:var(--text3);text-decoration:none;letter-spacing:.1em;text-transform:uppercase;margin-top:10px;transition:color .2s;}
+.back-link:hover{color:var(--accent);}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px;}
+.page-title{font-family:'Cormorant',serif;font-size:28px;font-weight:300;font-style:italic;}
+.page-sub{font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+.filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:24px;}
+.filter-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;white-space:nowrap;}
+.filter-sep{width:1px;height:24px;background:var(--border);margin:0 4px;}
+.btn-group{display:flex;gap:2px;flex-wrap:wrap;}
+.btn-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;}
+.btn-pill:hover{border-color:var(--border-h);color:var(--text);}
+.btn-pill.active{background:rgba(79,184,176,.15);border-color:var(--accent);color:var(--accent);}
+select.btn-pill{border-radius:20px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.kpi-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:10px;}
+.kpi-value{font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.1;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:7px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+.chart-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:16px;}
+.chart-wrap{position:relative;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.section-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);font-weight:500;margin:28px 0 16px;display:flex;align-items:center;gap:14px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+table.tbl{width:100%;border-collapse:collapse;}
+table.tbl th,table.tbl td{padding:9px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap;}
+table.tbl th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:500;background:rgba(255,255,255,.02);}
+table.tbl th:first-child,table.tbl td:first-child{text-align:left;white-space:normal;}
+table.tbl td.num{font-variant-numeric:tabular-nums;}
+table.tbl tr:hover td{background:rgba(255,255,255,.025);}
+.muted{color:var(--text3);}
+.bar-mini{height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:4px;}
+.bar-mini>div{height:100%;border-radius:3px;background:var(--accent);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.two-col{grid-template-columns:1fr;}}
+@media(max-width:768px){.sidebar{display:none;}.main{margin-left:0;padding:18px 12px;}.kpi-grid{grid-template-columns:1fr 1fr;}.panel{overflow-x:auto;}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg viewBox="0 0 120 100" fill="none">
+      <ellipse cx="60" cy="30" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5"/>
+      <ellipse cx="40" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(-42 40 38)"/>
+      <ellipse cx="80" cy="38" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(42 80 38)"/>
+      <ellipse cx="40" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(42 40 62)"/>
+      <ellipse cx="80" cy="62" rx="10" ry="22" stroke="#4fb8b0" stroke-width="1.5" transform="rotate(-42 80 62)"/>
+    </svg>
+    <div class="sb-logo-name">Загородный клуб «Утрау»</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">
+      <div class="sb-section-label">Отчёты</div>
+      <a class="sb-link" href="finance.html"><span class="sb-link-icon">◉</span> Доходность</a>
+      <a class="sb-link" href="budget.html"><span class="sb-link-icon">▤</span> Бюджет</a>
+      <a class="sb-link" href="fnb.html"><span class="sb-link-icon">🍽</span> F&B питание</a>
+      <a class="sb-link active" href="#"><span class="sb-link-icon">♨</span> СПА · Баня</a>
+      <a class="sb-link" href="reports.html"><span class="sb-link-icon">⌂</span> Портал</a>
+    </div>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sb-updated" id="sb-updated">—</div>
+    <a class="back-link" href="reports.html">← Портал</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">СПА · Банный комплекс</div>
+      <div class="page-sub">Доп. услуги · выручка по месяцам и категориям · 2024–2026</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:11px;color:var(--text3);">Обновлено</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px;" id="hdr-updated">—</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Год</span>
+    <div class="btn-group" id="year-btns"></div>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Месяц</span>
+    <select class="btn-pill" id="month-sel" onchange="setMonth(this.value)">
+      <option value="all">Все</option>
+    </select>
+  </div>
+
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="chart-card">
+    <div class="chart-title" id="trend-title">Динамика выручки СПА по месяцам</div>
+    <div class="chart-wrap" style="height:260px"><canvas id="chart-trend"></canvas></div>
+  </div>
+
+  <div class="two-col">
+    <div class="chart-card" style="margin-bottom:0;">
+      <div class="chart-title">Выручка по категориям</div>
+      <div class="chart-wrap" style="height:260px"><canvas id="chart-cat"></canvas></div>
+    </div>
+    <div>
+      <div class="section-label" style="margin-top:0;">По категориям</div>
+      <div class="panel" style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th>Категория</th><th>Выручка</th><th>Доля</th></tr></thead>
+          <tbody id="cat-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" id="services-label">Топ услуг по выручке</div>
+  <div class="panel" style="overflow-x:auto;margin-bottom:16px;">
+    <table class="tbl">
+      <thead><tr><th>Услуга</th><th>Категория</th><th>Выручка</th></tr></thead>
+      <tbody id="services-body"></tbody>
+    </table>
+  </div>
+
+  <div style="font-size:11px;color:var(--text3);margin-top:16px;line-height:1.6;">
+    <b style="color:var(--text2);">Примечания.</b> Источник — помесячные выгрузки доп. услуг (ExtraServices) СПА / банного комплекса.
+    Категории собраны из названий услуг по ключевым словам. Данные обновляются автоматически при добавлении новых месяцев.
+  </div>
+</main>
+
+<script>
+var RAW = window.UTRAU_SPA || {months:{}, generated:''};
+var MONTH_NAMES = {'01':'Январь','02':'Февраль','03':'Март','04':'Апрель','05':'Май','06':'Июнь','07':'Июль','08':'Август','09':'Сентябрь','10':'Октябрь','11':'Ноябрь','12':'Декабрь'};
+var CAT_COLORS = {'Баня / Банный комплекс':'#4fb8b0','Сауна и бассейн':'#4da6d9','Массаж':'#c98ada','Парение и уход':'#e0b070','Джакузи':'#7ec88a','Тарифы и прочее':'#8a94a6','Прочее':'#6a6a6a'};
+var state = { year:'all', month:'all' };
+
+Chart.defaults.color='rgba(238,234,228,0.45)';
+Chart.defaults.borderColor='rgba(255,255,255,0.07)';
+Chart.defaults.font.family="'DM Sans',sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.plugins.legend.labels.boxWidth=10;
+Chart.defaults.plugins.legend.labels.padding=12;
+
+function fmtRub(v){ if(v==null) return '—'; var a=Math.abs(v);
+  if(a>=1e6) return (v/1e6).toFixed(2).replace('.',',')+' млн';
+  if(a>=1e3) return Math.round(v/1e3)+' тыс'; return Math.round(v).toLocaleString('ru'); }
+function fmtFull(v){ if(v==null) return '—'; return Math.round(v).toLocaleString('ru')+' ₽'; }
+
+function allMonths(){ return Object.keys(RAW.months).sort(); }
+function scopeMonths(){
+  return allMonths().filter(function(m){
+    if(state.year!=='all' && m.slice(0,4)!==state.year) return false;
+    if(state.month!=='all' && m!==state.month) return false;
+    return true;
+  });
+}
+function scopeServices(){
+  var out=[];
+  scopeMonths().forEach(function(m){ (RAW.months[m].services||[]).forEach(function(s){ out.push(s); }); });
+  return out;
+}
+function catTotals(){
+  var t={};
+  scopeServices().forEach(function(s){ t[s.cat]=(t[s.cat]||0)+s.rev; });
+  return Object.keys(t).map(function(k){return {cat:k,rev:t[k]};}).sort(function(a,b){return b.rev-a.rev;});
+}
+
+function renderKPI(){
+  var mos=scopeMonths(), total=0;
+  mos.forEach(function(m){ total+=RAW.months[m].total; });
+  var avg = mos.length? total/mos.length : 0;
+  var svc = scopeServices();
+  var names={}; svc.forEach(function(s){ names[s.name]=1; });
+  var cats=catTotals(), topCat=cats.length?cats[0]:null;
+  var grid=document.getElementById('kpi-grid'); grid.innerHTML='';
+  var cards=[
+    {label:'Выручка СПА', val:fmtRub(total)+' ₽', sub: mos.length+' мес.'},
+    {label:'В среднем в месяц', val:fmtRub(avg)+' ₽', sub:'по выбранному периоду'},
+    {label:'Услуг в прайсе', val:Object.keys(names).length, sub:'уникальных позиций'},
+    {label:'Топ-категория', val: topCat?topCat.cat.split(' ')[0]:'—', sub: topCat?fmtRub(topCat.rev)+' ₽':''}
+  ];
+  cards.forEach(function(c){
+    var el=document.createElement('div'); el.className='kpi-card';
+    el.innerHTML='<div class="kpi-label">'+c.label+'</div><div class="kpi-value">'+c.val+'</div><div class="kpi-sub">'+c.sub+'</div>';
+    grid.appendChild(el);
+  });
+}
+
+var charts={};
+function renderTrend(){
+  // всегда показываем месяцы выбранного года (или все), выделяя выбранный месяц
+  var mos=allMonths().filter(function(m){ return state.year==='all' || m.slice(0,4)===state.year; });
+  var labels=mos.map(function(m){ var p=m.split('-'); return (MONTH_NAMES[p[1]]||p[1]).slice(0,3)+' '+p[0].slice(2); });
+  var vals=mos.map(function(m){ return RAW.months[m].total; });
+  var colors=mos.map(function(m){ var y=m.slice(0,4); var base=y==='2024'?'#4da6d9':y==='2025'?'#4fb8b0':'#7ec88a';
+    return (state.month==='all'||state.month===m)?base:base+'55'; });
+  if(charts.trend)charts.trend.destroy();
+  charts.trend=new Chart(document.getElementById('chart-trend'),{
+    type:'bar',
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtFull(c.raw);}}}},
+      scales:{x:{grid:{display:false},ticks:{maxRotation:60,minRotation:0}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:function(v){return fmtRub(v);}}}}}
+  });
+  document.getElementById('trend-title').textContent='Динамика выручки СПА по месяцам'+(state.year!=='all'?' · '+state.year:' · 2024–2026');
+}
+function renderCatChart(){
+  var cats=catTotals();
+  if(charts.cat)charts.cat.destroy();
+  charts.cat=new Chart(document.getElementById('chart-cat'),{
+    type:'doughnut',
+    data:{labels:cats.map(function(c){return c.cat;}),datasets:[{data:cats.map(function(c){return c.rev;}),
+      backgroundColor:cats.map(function(c){return CAT_COLORS[c.cat]||'#6a6a6a';}),borderColor:'#0f1610',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'right'},tooltip:{callbacks:{label:function(c){return c.label+': '+fmtFull(c.raw);}}}}}
+  });
+}
+function renderCatTable(){
+  var cats=catTotals(), total=cats.reduce(function(s,c){return s+c.rev;},0);
+  var tb=document.getElementById('cat-body'); tb.innerHTML='';
+  cats.forEach(function(c){
+    var pct=total>0?c.rev/total*100:0;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+c.cat+'<div class="bar-mini"><div style="width:'+pct.toFixed(0)+'%;background:'+(CAT_COLORS[c.cat]||'#6a6a6a')+'"></div></div></td>'+
+      '<td class="num">'+fmtFull(c.rev)+'</td><td class="num muted">'+pct.toFixed(0)+'%</td>';
+    tb.appendChild(tr);
+  });
+}
+function renderServices(){
+  // агрегируем услуги по имени в выбранном периоде
+  var agg={};
+  scopeServices().forEach(function(s){ if(!agg[s.name])agg[s.name]={name:s.name,cat:s.cat,rev:0}; agg[s.name].rev+=s.rev; });
+  var rows=Object.keys(agg).map(function(k){return agg[k];}).sort(function(a,b){return b.rev-a.rev;}).slice(0,20);
+  var tb=document.getElementById('services-body'); tb.innerHTML='';
+  rows.forEach(function(s){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+s.name+'</td><td class="muted">'+s.cat+'</td><td class="num">'+fmtFull(s.rev)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+function renderAll(){ renderKPI(); renderTrend(); renderCatChart(); renderCatTable(); renderServices(); }
+
+function setYear(y,btn){
+  state.year=y; state.month='all';
+  document.querySelectorAll('#year-btns .btn-pill').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  rebuildMonthSelect();
+  renderAll();
+}
+function setMonth(m){ state.month=m; renderAll(); }
+
+function rebuildMonthSelect(){
+  var sel=document.getElementById('month-sel');
+  var cur=state.month;
+  sel.innerHTML='<option value="all">Все</option>';
+  allMonths().filter(function(m){ return state.year==='all'||m.slice(0,4)===state.year; }).forEach(function(m){
+    var p=m.split('-'); var o=document.createElement('option'); o.value=m;
+    o.textContent=(MONTH_NAMES[p[1]]||p[1])+' '+p[0]; sel.appendChild(o);
+  });
+  sel.value = allMonths().indexOf(cur)>=0 ? cur : 'all';
+  if(sel.value!==cur) state.month='all';
+}
+
+window.__reportData=function(){
+  var mos=scopeMonths(), total=0; mos.forEach(function(m){total+=RAW.months[m].total;});
+  var L=['Отчёт: СПА / Банный комплекс (доп.услуги)', 'Период: '+(state.year==='all'?'все годы':state.year)+(state.month!=='all'?', '+state.month:''), ''];
+  L.push('Выручка за период: '+Math.round(total).toLocaleString('ru')+' ₽ ('+mos.length+' мес.)');
+  L.push('По категориям: '+catTotals().map(function(c){return c.cat+' '+Math.round(c.rev);}).join(', '));
+  L.push('', 'Помесячно (весь период):');
+  allMonths().forEach(function(m){ L.push('  '+m+': '+Math.round(RAW.months[m].total).toLocaleString('ru')); });
+  return L.join('\n');
+};
+
+function boot(){
+  var months=allMonths();
+  if(!months.length){ document.querySelector('.main').innerHTML='<p style="padding:60px;color:var(--text2)">Нет данных СПА. Запустите build_spa.py</p>'; return; }
+  var years=Array.from(new Set(months.map(function(m){return m.slice(0,4);}))).sort();
+  var yb=document.getElementById('year-btns'); yb.innerHTML='';
+  [['all','Все']].concat(years.map(function(y){return [y,y];})).forEach(function(pair,i){
+    var btn=document.createElement('button'); btn.className='btn-pill'+(i===0?' active':''); btn.textContent=pair[1];
+    btn.onclick=function(){ setYear(pair[0],btn); }; yb.appendChild(btn);
+  });
+  rebuildMonthSelect();
+  if(RAW.generated){ document.getElementById('sb-updated').textContent='Обновлено '+RAW.generated; document.getElementById('hdr-updated').textContent=RAW.generated; }
+  renderAll();
+}
+boot();
+</script>
+<script src="js/pwa.js"></script>
+<script src="notify.js"></script>
+<script src="chat-widget.js" data-report="spa"></script>
+</body>
+</html>

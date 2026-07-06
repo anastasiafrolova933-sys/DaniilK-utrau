@@ -79,3 +79,10 @@ if ((Test-Path $PYTHON) -and (Test-Path $buildFnb)) {
     Write-Host "Running build_fnb.py..." -ForegroundColor Cyan
     & $PYTHON $buildFnb
 }
+
+# ---- СПА / Банный комплекс — отдельная Google-таблица (XLSX, все вкладки разом) ----
+$buildSpa = Join-Path $PSScriptRoot "build_spa.py"
+if ((Test-Path $PYTHON) -and (Test-Path $buildSpa)) {
+    Write-Host "Running build_spa.py..." -ForegroundColor Cyan
+    & $PYTHON $buildSpa
+}

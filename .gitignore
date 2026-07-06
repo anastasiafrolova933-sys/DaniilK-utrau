@@ -10,3 +10,6 @@ backend/
 # Системные
 Thumbs.db
 .DS_Store
+
+# Промежуточный XLSX СПА (пересоздаётся build_spa.py)
+data/spa_raw.xlsx
