@@ -1,6 +1,6 @@
-﻿// budget_data.js - auto-generated 2026-07-08 10:00
+﻿// budget_data.js - auto-generated 2026-07-09 10:00
 // Do not edit manually
-window.UTRAU_BUDGET={generated:"2026-07-08 10:00",bdr:[
+window.UTRAU_BUDGET={generated:"2026-07-09 10:00",bdr:[
   {code:"",name:"Заезд номеров в месяц",level:0,kind:"kpi",isRatio:false,year:{f25:6677,p26:8785,f26:2079},mf25:[415,428,456,422,606,563,969,899,557,501,483,378],mp26:[405,400,470,460,720,900,1050,1050,890,780,760,900],mf26:[405,389,450,339,496,null,null,null,null,null,null,null]},
   {code:"",name:"Заезд гостей в месяц, чел",level:0,kind:"kpi",isRatio:false,year:{f25:17715,p26:21500,f26:5435},mf25:[1123,1053,1208,1107,1666,1525,2697,2454,1376,1277,1263,966],mp26:[1092,910,1220,1150,1800,2250,2750,2800,2200,1800,1800,2000],mf26:[1092,1000,1205,876,1262,null,null,null,null,null,null,null]},
   {code:"",name:"Заезд номероночей в месяц",level:0,kind:"kpi",isRatio:false,year:{f25:8655,p26:11201,f26:2575},mf25:[542,486,535,487,834,810,1365,1270,713,621,565,427],mp26:[510,480,558,550,990,1200,1480,1450,1140,920,900,1023],mf26:[510,470,521,440,634,null,null,null,null,null,null,null]},
