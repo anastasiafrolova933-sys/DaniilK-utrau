@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://dancing-parent-bond-vendors.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://chairman-int-tension-reno.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
