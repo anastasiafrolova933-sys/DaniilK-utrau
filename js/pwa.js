@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://surplus-winners-infrared-mask.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://portrait-newspapers-logan-settings.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
