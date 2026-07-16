@@ -1,5 +1,5 @@
 {
-    "url":  "https://api.trycloudflare.com",
-    "updated":  "2026-07-16T22:32:52+03:00",
+    "url":  "https://daughter-tape-verified-marks.trycloudflare.com",
+    "updated":  "2026-07-16T22:35:17+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
