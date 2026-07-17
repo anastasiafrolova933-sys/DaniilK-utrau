@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://daughter-tape-verified-marks.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://calculator-nicole-jeans-shall.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
