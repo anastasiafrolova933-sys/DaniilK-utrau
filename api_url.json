@@ -1,5 +1,5 @@
 {
-    "url":  "https://api.trycloudflare.com",
-    "updated":  "2026-07-18T11:30:22+03:00",
+    "url":  "https://eligibility-genius-creator-performance.trycloudflare.com",
+    "updated":  "2026-07-18T13:00:18+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
