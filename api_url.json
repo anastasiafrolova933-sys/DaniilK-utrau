@@ -1,5 +1,5 @@
 {
-    "url":  "https://rent-affiliate-kai-ordered.trycloudflare.com",
-    "updated":  "2026-07-18T17:35:13+03:00",
+    "url":  "https://api.trycloudflare.com",
+    "updated":  "2026-07-18T19:45:44+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
