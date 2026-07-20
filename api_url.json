@@ -1,5 +1,5 @@
 {
-    "url":  "https://api.trycloudflare.com",
-    "updated":  "2026-07-20T03:20:47+03:00",
+    "url":  "https://elimination-irrigation-metallica-vertical.trycloudflare.com",
+    "updated":  "2026-07-20T08:05:12+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
