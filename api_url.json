@@ -1,5 +1,5 @@
 {
-    "url":  "https://api.trycloudflare.com",
-    "updated":  "2026-07-20T08:10:22+03:00",
+    "url":  "https://founder-inter-careful-tomatoes.trycloudflare.com",
+    "updated":  "2026-07-20T08:15:12+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
