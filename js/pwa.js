@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://api.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://passenger-everybody-added-books.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
