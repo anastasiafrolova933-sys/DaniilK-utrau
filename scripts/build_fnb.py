@@ -251,36 +251,68 @@ def parse_writeoff(rows):
             if v: total += v
     return round(total, 2)
 
-# ── сборка одного месяца ────────────────────────────────────────────────────
-def build_month(entry, log):
-    mk, fid, extras = entry["month"], entry["file_id"], entry["extras"]
-    # скачать xlsx
-    data = None
-    for u in (f"https://docs.google.com/spreadsheets/d/{fid}/export?format=xlsx",
-              f"https://drive.google.com/uc?export=download&id={fid}"):
-        try:
-            raw = http_get(u)
-            if raw[:2] == b"PK":
-                data = raw; break
-        except Exception as e:
-            log.append(f"  [{mk}] download err: {e}")
-    if data is None:
-        log.append(f"  [{mk}] ❌ не удалось скачать файл {fid}")
-        return None
-    xpath = RAW / f"{mk}.xlsx"; xpath.write_bytes(data)
-    wb = openpyxl.load_workbook(xpath, read_only=True, data_only=True)
+# ── единая сборка summary (все ключи, что читает fnb.html) ───────────────────
+def build_summary(rev_kitchen=0, rev_bs=0, rev_ba=0, rev_bfast=0, rev_banq=0, bp=None, bc=None,
+                  cogs_kitchen=0, cogs_bs=0, cogs_ba=0, cogs_bfast=0, cogs_banq=0,
+                  wo=None, other_wo=0.0, other_cost=0.0,
+                  income_override=None, cost_override=None, fc_total_override=None,
+                  banquet_hall=None, banquet_cork=None, services=None,
+                  inv=None, guests_a=None, guests_b=None, extras=None):
+    extras = extras or {}; wo = dict(wo or {}); inv = inv or {}
+    if banquet_hall is None: banquet_hall = extras.get("rev_banquet_hall")
+    if banquet_cork is None: banquet_cork = extras.get("rev_banquet_cork")
+    if services is None:     services = extras.get("rev_services_total")
+    ga = guests_a if guests_a is not None else extras.get("guests_alacarte")
+    gb = guests_b if guests_b is not None else extras.get("guests_banquet")
+    inv_total = inv.get("total") if inv.get("total") is not None else extras.get("inv_total")
 
+    rev_alacarte_total = rev_kitchen + rev_bs + rev_ba
+    cogs_alacarte = cogs_kitchen + cogs_bs + cogs_ba
+    wo_sum = sum(v for v in wo.values() if v) + (other_wo or 0)
+    income_total = income_override if income_override is not None else \
+        (rev_kitchen + rev_bs + rev_ba + rev_bfast + rev_banq + (banquet_hall or 0) + (banquet_cork or 0) + (services or 0))
+    cost_total = cost_override if cost_override is not None else \
+        (cogs_bfast + cogs_alacarte + cogs_banq + wo_sum + (other_cost or 0))
+    pct = lambda a, b: round(a / b * 100, 2) if b else None
+    banquet_total = round(rev_banq + (banquet_hall or 0) + (banquet_cork or 0), 2) \
+        if (banquet_hall is not None or banquet_cork is not None) else None
+    R = lambda x: round(x, 2) if isinstance(x, (int, float)) else x
+    return {
+        "rev_breakfast_packets": R(bp) if bp is not None else None,
+        "rev_breakfast_counter": R(bc) if bc is not None else None,
+        "rev_breakfast": R(rev_bfast), "rev_kitchen": R(rev_kitchen),
+        "rev_bar_soft": R(rev_bs), "rev_bar_alco": R(rev_ba),
+        "rev_alacarte_total": R(rev_alacarte_total), "rev_banquet_food": R(rev_banq),
+        "rev_banquet_hall": banquet_hall, "rev_banquet_cork": banquet_cork,
+        "rev_banquet_total": banquet_total, "rev_services_total": services,
+        "income_total": R(income_total),
+        "cogs_breakfast": R(cogs_bfast), "cogs_alacarte": R(cogs_alacarte), "cogs_banquet": R(cogs_banq),
+        "wo_comp": R(wo.get("wo_comp", 0)), "wo_spoilage": R(wo.get("wo_spoilage", 0)),
+        "wo_represent": R(wo.get("wo_represent", 0)), "wo_deletions": R(wo.get("wo_deletions", 0)),
+        "wo_staff": R(wo.get("wo_staff", 0)), "wo_free": R(wo.get("wo_free", 0.0)), "wo_dev": R(wo.get("wo_dev", 0)),
+        "cost_total": R(cost_total),
+        "inv_kitchen_start": inv.get("kitchen_start"), "inv_kitchen_buy": inv.get("kitchen_buy"),
+        "inv_kitchen_end": inv.get("kitchen_end"), "inv_bar_start": inv.get("bar_start"),
+        "inv_bar_buy": inv.get("bar_buy"), "inv_bar_end": inv.get("bar_end"), "inv_total": inv_total,
+        "guests_alacarte": ga, "guests_banquet": gb,
+        "check_alacarte": round(rev_alacarte_total / ga, 2) if ga else None,
+        "check_banquet": round(rev_banq / gb, 2) if gb else None,
+        "fc_kitchen": pct(cogs_kitchen, rev_kitchen), "fc_bar": pct(cogs_bs + cogs_ba, rev_bs + rev_ba),
+        "fc_alacarte": pct(cogs_alacarte, rev_alacarte_total), "fc_breakfast": pct(cogs_bfast, rev_bfast),
+        "fc_banquet": pct(cogs_banq, rev_banq),
+        "fc_total": fc_total_override if fc_total_override is not None
+                    else pct(cogs_bfast + cogs_alacarte + cogs_banq, income_total),
+    }
+
+# ── формат iiko (январь): 12 вкладок-категорий ──────────────────────────────
+def parse_iiko(wb, mk, extras, log):
     cat_rev, cat_cost, sales = {}, {}, {}
     other_rev = other_cost = other_wo = 0.0
     wo = {"wo_deletions":0.0,"wo_comp":0.0,"wo_represent":0.0,"wo_staff":0.0,"wo_spoilage":0.0,"wo_dev":0.0}
-    seen_period = None
-
     for sheet in wb.sheetnames:
         rows = [list(r) for r in wb[sheet].iter_rows(values_only=True)]
         rows = [r for r in rows if any(c is not None and str(c).strip() for c in r)]
-        if not rows:
-            continue
-        seen_period = seen_period or period_month(rows)
+        if not rows: continue
         kind, cat = classify(sheet, rows)
         if kind == "sale":
             rev, cost, items = parse_sale(rows)
@@ -290,79 +322,170 @@ def build_month(entry, log):
                 sales.setdefault(cat, []).extend(items)
             else:
                 other_rev += rev; other_cost += cost
-                log.append(f"  [{mk}] ⚠️ незнакомая ВКЛАДКА-ПРОДАЖИ «{sheet}» ({rev:,.0f} ₽) — учтена в прочее")
+                log.append(f"  [{mk}] ⚠️ незнакомая ВКЛАДКА-ПРОДАЖИ «{sheet}» ({rev:,.0f} ₽) — в прочее")
         elif kind == "writeoff":
             total = parse_writeoff(rows)
-            if cat is None:
-                cat = cat_by_content(rows, WO_CATS)   # по «Счёт списания», если имя вкладки не помогло
-            if cat:
-                wo[cat] = wo.get(cat, 0) + total
+            if cat is None: cat = cat_by_content(rows, WO_CATS)
+            if cat: wo[cat] = wo.get(cat, 0) + total
             else:
                 other_wo += total
-                log.append(f"  [{mk}] ⚠️ незнакомая ВКЛАДКА-СПИСАНИЯ «{sheet}» ({total:,.0f} ₽) — учтена в прочее")
-        else:
-            log.append(f"  [{mk}] ⚠️ вкладка «{sheet}» не распознана ({len(rows)} строк) — пропущена")
-
-    if seen_period and seen_period != mk:
-        log.append(f"  [{mk}] ⚠️ период в файле = {seen_period} (реестр говорит {mk}) — проверьте ссылку")
-
-    # ── сводка ──
-    g = lambda k: cat_rev.get(k, 0)
-    c = lambda k: cat_cost.get(k, 0)
-    rev_kitchen = g("kitchen"); rev_bs = g("bar_soft"); rev_ba = g("bar_alco")
-    rev_bfast = g("breakfast"); rev_banq = g("banquet")
-    cogs_kitchen = c("kitchen"); cogs_bs = c("bar_soft"); cogs_ba = c("bar_alco")
-    cogs_bfast = c("breakfast"); cogs_banq = c("banquet")
-    rev_alacarte_total = rev_kitchen + rev_bs + rev_ba
-    cogs_alacarte = cogs_kitchen + cogs_bs + cogs_ba
-    # завтраки: пакетные (ЮЛ) vs от стойки — по позициям
+                log.append(f"  [{mk}] ⚠️ незнакомая ВКЛАДКА-СПИСАНИЯ «{sheet}» ({total:,.0f} ₽) — в прочее")
+    if not cat_rev and not any(wo.values()) and other_wo == 0 and other_rev == 0:
+        return None
+    g = lambda k: cat_rev.get(k, 0); c = lambda k: cat_cost.get(k, 0)
     bp = bc = 0.0
     for it in sales.get("breakfast", []):
         if "юл" in norm(it["g1"]) or (it.get("qty") or 0) >= 100: bp += it["rev"]
         else: bc += it["rev"]
-    wo_sum = sum(wo.values()) + other_wo
-    income_total = rev_kitchen + rev_bs + rev_ba + rev_bfast + rev_banq + other_rev
-    income_total += extras.get("rev_banquet_hall", 0) + extras.get("rev_banquet_cork", 0) + extras.get("rev_services_total", 0)
-    cost_total = cogs_bfast + cogs_alacarte + cogs_banq + wo_sum + other_cost
-    pct = lambda a, b: round(a / b * 100, 2) if b else None
-    ga = extras.get("guests_alacarte"); gb = extras.get("guests_banquet")
-
-    summary = {
-        "rev_breakfast_packets": round(bp, 2), "rev_breakfast_counter": round(bc, 2),
-        "rev_breakfast": round(rev_bfast, 2), "rev_kitchen": round(rev_kitchen, 2),
-        "rev_bar_soft": round(rev_bs, 2), "rev_bar_alco": round(rev_ba, 2),
-        "rev_alacarte_total": round(rev_alacarte_total, 2),
-        "rev_banquet_food": round(rev_banq, 2),
-        "rev_banquet_hall": extras.get("rev_banquet_hall"),
-        "rev_banquet_cork": extras.get("rev_banquet_cork"),
-        "rev_banquet_total": (round(rev_banq + extras.get("rev_banquet_hall", 0) + extras.get("rev_banquet_cork", 0), 2)
-                              if ("rev_banquet_hall" in extras or "rev_banquet_cork" in extras) else None),
-        "rev_services_total": extras.get("rev_services_total"),
-        "income_total": round(income_total, 2),
-        "cogs_breakfast": round(cogs_bfast, 2), "cogs_alacarte": round(cogs_alacarte, 2),
-        "cogs_banquet": round(cogs_banq, 2),
-        "wo_comp": wo["wo_comp"], "wo_spoilage": wo["wo_spoilage"], "wo_represent": wo["wo_represent"],
-        "wo_deletions": wo["wo_deletions"], "wo_staff": wo["wo_staff"], "wo_free": 0.0,
-        "wo_dev": wo["wo_dev"], "cost_total": round(cost_total, 2),
-        "inv_kitchen_start": None, "inv_kitchen_buy": None, "inv_kitchen_end": None,
-        "inv_bar_start": None, "inv_bar_buy": None, "inv_bar_end": None,
-        "inv_total": extras.get("inv_total"),
-        "guests_alacarte": ga, "guests_banquet": gb,
-        "check_alacarte": round(rev_alacarte_total / ga, 2) if ga else None,
-        "check_banquet": round(rev_banq / gb, 2) if gb else None,
-        "fc_kitchen": pct(cogs_kitchen, rev_kitchen), "fc_bar": pct(cogs_bs + cogs_ba, rev_bs + rev_ba),
-        "fc_alacarte": pct(cogs_alacarte, rev_alacarte_total), "fc_breakfast": pct(cogs_bfast, rev_bfast),
-        "fc_banquet": pct(cogs_banq, rev_banq),
-        "fc_total": pct(cogs_bfast + cogs_alacarte + cogs_banq, income_total),
-    }
-    # «Без оплаты» — приход 0, интересна себестоимость -> кладём в wo_free
-    if "free" in cat_cost:
-        summary["wo_free"] = round(cat_cost["free"], 2)
-        summary["cost_total"] = round(summary["cost_total"] + cat_cost["free"], 2)
-
-    log.append(f"  [{mk}] ✓ выручка {income_total:,.0f} ₽ | списания {wo_sum:,.0f} | "
-               f"вкладок-продаж {len(cat_rev)} | FC {summary['fc_total']}%")
+    wo["wo_free"] = cat_cost.get("free", 0.0)   # «Без оплаты» — приход 0, важна себестоимость
+    summary = build_summary(
+        rev_kitchen=g("kitchen"), rev_bs=g("bar_soft"), rev_ba=g("bar_alco"),
+        rev_bfast=g("breakfast"), rev_banq=g("banquet"), bp=bp, bc=bc,
+        cogs_kitchen=c("kitchen"), cogs_bs=c("bar_soft"), cogs_ba=c("bar_alco"),
+        cogs_bfast=c("breakfast"), cogs_banq=c("banquet"),
+        wo=wo, other_wo=other_wo, other_cost=other_cost + cat_cost.get("free", 0.0), extras=extras)
     return {"summary": summary, "sales": sales, "banquets": []}
+
+# ── формат A1-сводка (февраль): значения по меткам строк ─────────────────────
+def a1_val(rows, *needles):
+    ndl = [n.lower() for n in needles]
+    for r in rows:
+        j = norm(" | ".join("" if c is None else str(c) for c in r))
+        if all(n in j for n in ndl):
+            for k in range(2, len(r)):
+                v = num(r[k])
+                if v is not None: return v
+    return None
+
+def parse_a1(rows, extras, log):
+    V = lambda *n: a1_val(rows, *n)
+    rev_bfast = V("завтрак") or 0                     # строка-итог «Завтрак»
+    bp = V("завтраки пакетные"); bc = V("завтраки от стойки")
+    rev_kitchen = V("кухня") or 0
+    rev_bs = V("бар напитки") or 0
+    rev_ba = (V("бар алкоголь") or 0) + (V("бар пиво") or 0)
+    rev_banq = V("питание") or 0                      # банкет «Питание» (первое вхождение)
+    cogs_bfast = V("с/с", "завтрак") or 0
+    cogs_kitchen = V("с/с", "а-ля карт") or 0
+    cogs_bs = V("с/с", "напитки") or 0
+    cogs_ba = (V("с/с", "пиво") or 0) + (V("с/с", "алкоголь") or 0)
+    wo = {"wo_comp": V("комплемент") or 0, "wo_spoilage": V("порча") or 0,
+          "wo_represent": V("представительск") or 0, "wo_staff": V("питание сотрудник") or 0,
+          "wo_dev": V("проработка") or 0, "wo_deletions": V("удаление") or 0}
+    inv = {"kitchen_start": V("кухня начало"), "kitchen_buy": V("кухня закуп"), "kitchen_end": V("кухня конец"),
+           "bar_start": V("бар начало"), "bar_buy": V("бар закуп"), "bar_end": V("бар конец"),
+           "total": V("итого товарный остаток")}
+    return {"summary": build_summary(
+        rev_kitchen=rev_kitchen, rev_bs=rev_bs, rev_ba=rev_ba, rev_bfast=rev_bfast, rev_banq=rev_banq,
+        bp=bp, bc=bc, cogs_kitchen=cogs_kitchen, cogs_bs=cogs_bs, cogs_ba=cogs_ba,
+        cogs_bfast=cogs_bfast, cogs_banq=(V("с/с", "банкет") or 0), wo=wo,
+        income_override=(V("доход fb") or V("итого приход дс")),
+        cost_override=V("итого расход продуктов"), fc_total_override=V("общий fc службы"),
+        banquet_hall=V("аренда зала"), banquet_cork=V("пробковый"), services=V("услуги"),
+        inv=inv, guests_a=V("количество гостей по меню"), guests_b=V("количество гостей на банкет"),
+        extras=extras), "sales": {}, "banquets": []}
+
+# ── формат Sheet1 (март–июнь): категории × колонка «Общее» ───────────────────
+WO_WORDS = {"представительск": "wo_represent", "порча": "wo_spoilage", "комплимент": "wo_comp",
+            "удаление": "wo_deletions", "проработ": "wo_dev", "стафф": "wo_staff"}
+
+def parse_sheet1(rows, extras, log):
+    col_total = None
+    for r in rows:                                    # колонка «Общее» из заголовка
+        for j, cc in enumerate(r):
+            if norm(cc) == "общее": col_total = j; break
+        if col_total is not None: break
+    if col_total is None:
+        col_total = max((len(r) for r in rows), default=1) - 1
+    rev = {}; cogs = {}; income = None; other_wo = 0.0
+    wo = {v: 0.0 for v in set(WO_WORDS.values())}
+    section = "income"
+    for r in rows:
+        label = norm(r[2]) if len(r) > 2 and r[2] else ""
+        if not label: continue
+        if label == "себес": section = "cogs"; continue
+        if label.startswith("кост"): break
+        v = num(r[col_total]) if col_total < len(r) else None
+        if v is None: continue
+        if section == "income":
+            if "доход fb" in label: income = v
+            elif "напитки" in label: rev["bar_soft"] = rev.get("bar_soft", 0) + v
+            elif label.startswith("пиво") or "крепкая" in label or "вино" in label or "коктел" in label:
+                rev["bar_alco"] = rev.get("bar_alco", 0) + v
+            elif "банкет" in label: rev["banquet"] = rev.get("banquet", 0) + v
+            elif "меню аля" in label or "аля карт" in label: rev["kitchen"] = rev.get("kitchen", 0) + v
+            elif "завтрак" in label: rev["breakfast"] = rev.get("breakfast", 0) + v
+            elif "услуг" in label or "рум сервис" in label: rev["services"] = rev.get("services", 0) + v
+            elif "пробковый" in label: rev["cork"] = rev.get("cork", 0) + v
+        else:                                          # секция себес: себес-категории + списания
+            wcat = next((k for w, k in WO_WORDS.items() if w in label), None)
+            if wcat: wo[wcat] += v
+            elif "маркетинг" in label: other_wo += v
+            elif "напитки" in label: cogs["bar_soft"] = cogs.get("bar_soft", 0) + v
+            elif label.startswith("пиво") or "крепкая" in label or "вино" in label:
+                cogs["bar_alco"] = cogs.get("bar_alco", 0) + v
+            elif "банкет" in label: cogs["banquet"] = cogs.get("banquet", 0) + v
+            elif "меню аля" in label or "аля карт" in label: cogs["kitchen"] = cogs.get("kitchen", 0) + v
+            elif "завтрак" in label: cogs["breakfast"] = cogs.get("breakfast", 0) + v
+    return {"summary": build_summary(
+        rev_kitchen=rev.get("kitchen", 0), rev_bs=rev.get("bar_soft", 0), rev_ba=rev.get("bar_alco", 0),
+        rev_bfast=rev.get("breakfast", 0), rev_banq=rev.get("banquet", 0),
+        cogs_kitchen=cogs.get("kitchen", 0), cogs_bs=cogs.get("bar_soft", 0), cogs_ba=cogs.get("bar_alco", 0),
+        cogs_bfast=cogs.get("breakfast", 0), cogs_banq=cogs.get("banquet", 0),
+        wo=wo, other_wo=other_wo, income_override=income,
+        banquet_cork=rev.get("cork"), services=rev.get("services"), extras=extras),
+        "sales": {}, "banquets": []}
+
+# ── определить формат книги ─────────────────────────────────────────────────
+def detect_format(wb):
+    for sh in wb.sheetnames:
+        rows = [list(r) for r in wb[sh].iter_rows(values_only=True, max_row=45)]
+        txt = norm(" | ".join("" if c is None else str(c) for r in rows for c in r))
+        if "блюдо" in txt and "сумма со скидкой" in txt: return "iiko"
+        if "приход спин" in txt or "сводный отчет по движению" in txt or "итого приход дс" in txt: return "a1"
+        if "доход fb" in txt: return "sheet1"
+    return None
+
+# ── сборка одного месяца (скачать -> определить формат -> распарсить) ─────────
+def build_month(entry, log):
+    mk, fid, extras = entry["month"], entry["file_id"], entry["extras"]
+    data = None
+    for u in (f"https://docs.google.com/spreadsheets/d/{fid}/export?format=xlsx",
+              f"https://drive.google.com/uc?export=download&id={fid}"):
+        try:
+            raw = http_get(u)
+            if raw[:2] == b"PK": data = raw; break
+        except Exception as e:
+            log.append(f"  [{mk}] download err: {e}")
+    if data is None:
+        log.append(f"  [{mk}] ❌ не удалось скачать файл {fid}")
+        return None
+    xpath = RAW / f"{mk}.xlsx"; xpath.write_bytes(data)
+    wb = openpyxl.load_workbook(xpath, read_only=True, data_only=True)
+
+    fmt = detect_format(wb)
+    if fmt is None:
+        log.append(f"  [{mk}] ⛔ формат не распознан (вкладки: {wb.sheetnames}) — месяц ПРОПУЩЕН")
+        return None
+    if fmt == "iiko":
+        res = parse_iiko(wb, mk, extras, log)
+    else:
+        # A1 / Sheet1 — данные на одной вкладке; берём первую непустую
+        rows = []
+        for sh in wb.sheetnames:
+            rows = [list(r) for r in wb[sh].iter_rows(values_only=True)]
+            rows = [r for r in rows if any(c is not None and str(c).strip() for c in r)]
+            if rows: break
+        res = parse_a1(rows, extras, log) if fmt == "a1" else parse_sheet1(rows, extras, log)
+
+    if res is None:
+        log.append(f"  [{mk}] ⛔ формат «{fmt}» дал пусто — месяц ПРОПУЩЕН")
+        return None
+    s = res["summary"]
+    wo_sum = sum(v for v in [s["wo_comp"], s["wo_spoilage"], s["wo_represent"], s["wo_deletions"],
+                             s["wo_staff"], s["wo_dev"], s.get("wo_free", 0)] if v)
+    log.append(f"  [{mk}] ✓ [{fmt}] выручка {s['income_total']:,.0f} ₽ | списания {wo_sum:,.0f} | FC {s['fc_total']}%")
+    return res
 
 # ── main ────────────────────────────────────────────────────────────────────
 def build():
