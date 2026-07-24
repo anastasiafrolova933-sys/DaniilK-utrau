@@ -352,7 +352,7 @@ function renderWO(){
 function renderBanquets(){
   var b=RAW.months[state.month].banquets||[];
   var tb=document.getElementById('banquet-body'); tb.innerHTML='';
-  if(!b.length){ tb.innerHTML='<tr><td colspan="9" class="muted" style="text-align:center;padding:20px;">Нет банкетов в этом месяце</td></tr>'; return; }
+  if(!b.length){ tb.innerHTML='<tr><td colspan="9" class="muted" style="text-align:center;padding:20px;">Нет детализации банкетов за этот месяц</td></tr>'; return; }
   b.forEach(function(e){
     var tr=document.createElement('tr');
     tr.innerHTML='<td>'+e.date+'</td><td>'+e.customer+'</td><td class="muted">'+(e.format||'')+
@@ -367,6 +367,10 @@ function renderBanquets(){
 function renderInv(){
   var s=S();
   var tb=document.getElementById('inv-body'); tb.innerHTML='';
+  if(s.inv_total==null && s.inv_kitchen_end==null && s.inv_bar_end==null){
+    tb.innerHTML='<tr><td colspan="4" class="muted" style="text-align:center;padding:20px;">Товарный остаток за этот месяц не заведён</td></tr>';
+    return;
+  }
   [['Кухня',s.inv_kitchen_start,s.inv_kitchen_buy,s.inv_kitchen_end],
    ['Бар',s.inv_bar_start,s.inv_bar_buy,s.inv_bar_end]].forEach(function(r){
     var tr=document.createElement('tr');
@@ -397,10 +401,12 @@ function setMonth(mo,btn){
 window.__reportData=function(){
   var s=S();
   var L=['Отчёт: F&B Служба питания, месяц '+state.month, 'Выбран тип: '+TYPES[state.type].name, ''];
-  L.push('Выручка СПиН: '+Math.round(s.income_total).toLocaleString('ru')+' ₽, общий фудкост '+s.fc_total+'%');
+  L.push('Выручка СПиН: '+Math.round(s.income_total).toLocaleString('ru')+' ₽, общий фудкост '+(s.fc_total!=null?s.fc_total:'—')+'%');
   L.push('По типам (выручка / фудкост%):');
   ['alacarte','bar','banquet','breakfast'].forEach(function(t){var m=typeMetrics(t);L.push('  '+TYPES[t].name+': '+Math.round(m.rev||0).toLocaleString('ru')+' / '+(m.fc||'—')+'%');});
-  L.push('Гости: а-ля карт '+s.guests_alacarte+', банкеты '+s.guests_banquet+'; ср.чек а-ля карт '+s.check_alacarte+', банкет '+s.check_banquet);
+  if(s.guests_alacarte!=null||s.guests_banquet!=null)
+    L.push('Гости: а-ля карт '+(s.guests_alacarte!=null?s.guests_alacarte:'—')+', банкеты '+(s.guests_banquet!=null?s.guests_banquet:'—')+
+           '; ср.чек а-ля карт '+(s.check_alacarte!=null?s.check_alacarte:'—')+', банкет '+(s.check_banquet!=null?s.check_banquet:'—'));
   L.push('Списания: '+writeoffs().map(function(x){return x.name+' '+Math.round(x.v);}).join(', '));
   return L.join('\n');
 };

@@ -13,3 +13,9 @@ Thumbs.db
 
 # Промежуточный XLSX СПА (пересоздаётся build_spa.py)
 data/spa_raw.xlsx
+
+# Промежуточные XLSX F&B по месяцам (пересоздаются build_fnb.py)
+data/fnb_raw/
+
+# Python-байткод
+scripts/__pycache__/

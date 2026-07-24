@@ -1,250 +1,384 @@
 # -*- coding: utf-8 -*-
 """
 build_fnb.py — F&B Службы питания Утрау (ресторан КАЕФ).
-Парсит помесячно: A1 (сводка, источник правды) + A2 (банкеты) + B1-B6 (продажи по блюдам)
-→ data/fnb_data.js  (window.UTRAU_FNB)
 
-Источники (Google Sheets, помесячно — добавлять gid'ы в MONTHS):
-  Файл №1 (сводка): 10mv7goP8z1z0P8P9AAY2YkAO1UF5atOTSpSMrrIZ-MY  (A1 summary, A2 banquets)
-  Файл №2 (iiko):   12IY6jtT4tBI1YHL_Bl6S_VyJoNxA6oWD9pVqdKGTbPg  (B1-B6 продажи, B7-B12 списания)
+НОВАЯ схема (2026-07): каждый месяц = отдельный Google-файл (выгрузка iiko OLAP),
+ссылки собираются в РЕЕСТРЕ-таблице (месяц -> ссылка на файл).
+Парсер обходит ВСЕ вкладки книги, классифицирует их по СТРУКТУРЕ
+(продажи / акты списания), собирает сводку -> data/fnb_data.js (window.UTRAU_FNB).
 
-Запуск: python scripts/build_fnb.py   (скачает недостающее и пересоберёт)
+Реестр: 1ueE5blgChEYljlVnGktWKedsrcxfXXcn-U64X80AOQA
+  колонка A = месяц (напр. «Июль 2026»), B = ссылка на файл месяца.
+  Необязательные колонки (по ЗАГОЛОВКУ, если добавлены строкой сверху):
+    «аренда зала», «гости а-ля карт», «гости банкет», «товарный остаток»,
+    «пробковый», «услуги» — то, чего нет в выгрузке iiko.
+
+Новый месяц = вставить строку (месяц + ссылка) в реестр. Файл должен быть
+открыт «Доступ по ссылке -> Просмотр». Ничего в коде править не нужно.
+
+Запуск: python scripts/build_fnb.py
 """
-import os, re, csv, json, io, urllib.request
+import re, io, json, csv, sys, urllib.request, datetime
 from pathlib import Path
+import openpyxl
+
+try: sys.stdout.reconfigure(encoding="utf-8")   # Windows-консоль иначе падает на эмодзи/кириллице
+except Exception: pass
 
 ROOT = Path(__file__).resolve().parent.parent
-RAW  = ROOT / "data" / "fnb_raw"
 OUT  = ROOT / "data" / "fnb_data.js"
+RAW  = ROOT / "data" / "fnb_raw"
+RAW.mkdir(parents=True, exist_ok=True)
 
-F1 = "10mv7goP8z1z0P8P9AAY2YkAO1UF5atOTSpSMrrIZ-MY"   # сводка
-F2 = "12IY6jtT4tBI1YHL_Bl6S_VyJoNxA6oWD9pVqdKGTbPg"   # iiko
+REGISTRY_ID = "1ueE5blgChEYljlVnGktWKedsrcxfXXcn-U64X80AOQA"
 
-# Месяц -> файлы и gid'ы вкладок. Каждый новый месяц добавлять сюда.
-MONTHS = {
-    "2026-01": {
-        "summary":  (F1, "1642884690"),
-        "banquets": (F1, "2082985573"),
-        "sales": {                       # тип -> gid
-            "alacarte":  (F2, "783385239"),    # B1 а-ля карт (кухня)
-            "bar_soft":  (F2, "1830234765"),   # B2 бар безалкоголь
-            "bar_alco":  (F2, "2045101424"),   # B3 бар алкоголь
-            "banquet":   (F2, "1150083890"),   # B4 банкеты
-            "breakfast": (F2, "920499580"),    # B5 шведка/завтраки
-            "free":      (F2, "1806741079"),   # B6 без оплаты
-        },
-    },
-}
+MONTHS_RU = {"янв":1,"фев":2,"мар":3,"апр":4,"май":5,"мая":5,"июн":6,
+             "июл":7,"авг":8,"сен":9,"окт":10,"ноя":11,"дек":12}
 
-# ── загрузка ──────────────────────────────────────────────────────────────
-def fetch(sheet_id, gid, dest):
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        data = r.read().decode("utf-8", errors="replace")
-    dest.write_text(data, encoding="utf-8")
-    return data
-
-def ensure_month(month, cfg, force=False):
-    mdir = RAW / month
-    mdir.mkdir(parents=True, exist_ok=True)
-    files = {}
-    # summary + banquets
-    for key in ("summary", "banquets"):
-        sid, gid = cfg[key]
-        p = mdir / f"{key}.csv"
-        if force or not p.exists():
-            try: fetch(sid, gid, p); print(f"  [{month}] {key} downloaded")
-            except Exception as e: print(f"  [{month}] {key} FAILED: {e}")
-        files[key] = p
-    # sales
-    files["sales"] = {}
-    for t, (sid, gid) in cfg["sales"].items():
-        p = mdir / f"sales_{t}.csv"
-        if force or not p.exists():
-            try: fetch(sid, gid, p); print(f"  [{month}] sales_{t} downloaded")
-            except Exception as e: print(f"  [{month}] sales_{t} FAILED: {e}")
-        files["sales"][t] = p
-    return files
-
-# ── утилиты парсинга ───────────────────────────────────────────────────────
-def rows(path):
-    if not path.exists(): return []
-    txt = path.read_text(encoding="utf-8")
-    return list(csv.reader(io.StringIO(txt)))
-
-def num(s):
-    """'1 346 000,00 ₽' / '28,28' / '24,32%' -> float|None"""
-    if s is None: return None
-    s = str(s).strip()
-    if s == "" or s in ("-", "—"): return None
-    s = s.replace("₽", "").replace("₽", "").replace("%", "")
-    s = s.replace("\xa0", "").replace(" ", "").replace(" ", "")
-    s = s.replace(",", ".")
-    if s in ("", "-", "."): return None
+# ── утилиты ───────────────────────────────────────────────────────────────
+def num(v):
+    if v is None: return None
+    if isinstance(v, (int, float)): return round(float(v), 2)
+    s = str(v).strip().replace("\xa0", "").replace(" ", "").replace(" ", "")
+    s = s.replace("₽", "").replace("%", "").replace(",", ".")
+    if s in ("", "-", "—", "."): return None
     try: return round(float(s), 2)
     except ValueError: return None
 
 def norm(s):
     return re.sub(r"\s+", " ", str(s or "").strip().lower())
 
-def find_row(rws, *needles, after=0, need_num=False):
-    """Первая строка (с after), где есть ВСЕ needles. need_num=True — ещё и с числовым значением.
-    Возвращает (index, row, value)."""
-    needles = [n.lower() for n in needles]
-    for i in range(after, len(rws)):
-        joined = norm(" | ".join(rws[i]))
-        if all(n in joined for n in needles):
-            v = first_num_in(rws[i])
-            if need_num and v is None:
-                continue
-            return i, rws[i], v
-    return -1, None, None
-
-def first_num_in(row, after_col=2):
-    # колонка A = "№ п/п" (порядковый номер), B = метка; значения начинаются с C (индекс 2)
-    for j in range(after_col, len(row)):
-        v = num(row[j])
-        if v is not None: return v
+def month_key(text):
+    s = norm(text)
+    mon = None
+    for k, v in MONTHS_RU.items():
+        if s.startswith(k):
+            mon = v; break
+    ym = re.search(r"(20\d{2})", s)
+    if mon and ym:
+        return f"{ym.group(1)}-{mon:02d}"
     return None
 
-def label_value(rws, *needles, after=0):
-    """Числовое значение строки-метки (берём строку, где есть метка И число)."""
-    _, _, v = find_row(rws, *needles, after=after, need_num=True)
-    return v
+def file_id(url):
+    m = re.search(r"/spreadsheets/d/([A-Za-z0-9_\-]+)", str(url or ""))
+    if m: return m.group(1)
+    m = re.search(r"[?&]id=([A-Za-z0-9_\-]+)", str(url or ""))
+    return m.group(1) if m else None
 
-# ── A1: сводка ──────────────────────────────────────────────────────────────
-def parse_summary(path):
-    r = rows(path)
-    S = {}
-    # выручка
-    S["rev_breakfast_packets"] = label_value(r, "завтраки пакетные")
-    S["rev_breakfast_counter"] = label_value(r, "завтраки от стойки")
-    S["rev_breakfast"]         = label_value(r, "завтрак")       # строка-итого "Завтрак" (1 346 000)
-    S["rev_kitchen"]           = label_value(r, "кухня")         # первая 'кухня' с числом = приход кухни
-    S["rev_bar_soft"]          = label_value(r, "бар напитки")
-    S["rev_bar_alco"]          = label_value(r, "бар алкоголь")
-    S["rev_alacarte_total"]    = label_value(r, "а-ля карт")
-    S["rev_banquet_food"]      = label_value(r, "питание")
-    S["rev_banquet_hall"]      = label_value(r, "аренда зала")
-    S["rev_banquet_cork"]      = label_value(r, "пробковый сбор")
-    S["rev_banquet_total"]     = label_value(r, "банкеты")
-    S["rev_services_total"]    = label_value(r, "услуги")
-    S["income_total"]          = label_value(r, "итого приход дс")
-    # себестоимость
-    S["cogs_breakfast"] = label_value(r, "с/с (завтраки)")
-    S["cogs_alacarte"]  = label_value(r, "с/с (а-ля карт)")
-    S["cogs_banquet"]   = label_value(r, "с/с (банкет)")
-    # списания
-    S["wo_comp"]       = label_value(r, "комплементы")
-    S["wo_spoilage"]   = label_value(r, "порча")
-    S["wo_represent"]  = label_value(r, "представительские")
-    S["wo_deletions"]  = label_value(r, "удаления со списанием")
-    S["wo_staff"]      = label_value(r, "питание сотрудников")
-    S["wo_free"]       = label_value(r, "закрыто без оплаты")
-    S["wo_dev"]        = label_value(r, "проработка блюд")
-    S["cost_total"]    = label_value(r, "итого расход продуктов")
-    # товарный остаток
-    S["inv_kitchen_start"] = label_value(r, "кухня начало")
-    S["inv_kitchen_buy"]   = label_value(r, "кухня закуп")
-    S["inv_kitchen_end"]   = label_value(r, "кухня конец")
-    S["inv_bar_start"]     = label_value(r, "бар начало")
-    S["inv_bar_buy"]       = label_value(r, "бар закуп")
-    S["inv_bar_end"]       = label_value(r, "бар конец")
-    S["inv_total"]         = label_value(r, "итого товарный остаток")
-    # KPI
-    S["guests_alacarte"] = label_value(r, "количество гостей по меню а-ля карт")
-    S["guests_banquet"]  = label_value(r, "количество гостей на банкеты")
-    S["check_alacarte"]  = label_value(r, "средний чек по меню")
-    S["check_banquet"]   = label_value(r, "средний чек на банкеты")
-    S["fc_kitchen"]      = label_value(r, "средний fc за месяц меню кухня")
-    S["fc_bar"]          = label_value(r, "средний fc за месяц бар")
-    S["fc_alacarte"]     = label_value(r, "средний fc за месяц меню a-la carte")
-    S["fc_breakfast"]    = label_value(r, "средний fc за месяц завтраки")
-    S["fc_banquet"]      = label_value(r, "средний fc за месяц банкет")
-    S["fc_total"]        = label_value(r, "общий fc службы")
-    return S
+def http_get(url, timeout=60):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
 
-# ── A2: банкеты ──────────────────────────────────────────────────────────────
-def parse_banquets(path):
-    r = rows(path)
-    out = []
-    # ищем строку заголовка с 'заказчик'
-    hi, _, _ = find_row(r, "заказчик")
-    if hi < 0: return out
-    for row in r[hi+1:]:
-        joined = norm(" | ".join(row))
-        if joined.startswith("итого") or "итого" in (norm(row[0]) if row else ""):
+# ── реестр ────────────────────────────────────────────────────────────────
+# Необязательные показатели: ключ summary -> ключевые слова в заголовке колонки
+EXTRA_COLS = {
+    "rev_banquet_hall": ["аренда", "зал"],
+    "rev_banquet_cork": ["пробков", "cork"],
+    "rev_services_total": ["услуг"],
+    "guests_alacarte": ["гост", "карт"],
+    "guests_banquet": ["гост", "банкет"],
+    "inv_total": ["остаток", "инвентар", "товарн"],
+}
+
+def match_extra(header_cell):
+    h = norm(header_cell)
+    if not h: return None
+    for key, words in EXTRA_COLS.items():
+        if all(w in h for w in words):
+            return key
+    return None
+
+def fetch_registry():
+    """-> список dict: {month, file_id, extras{}}"""
+    url = f"https://docs.google.com/spreadsheets/d/{REGISTRY_ID}/export?format=csv"
+    raw = http_get(url, 30).decode("utf-8", errors="replace")
+    if raw.lstrip().startswith("<"):
+        raise RuntimeError("реестр недоступен (нет доступа по ссылке?)")
+    rows = list(csv.reader(io.StringIO(raw)))
+
+    # заголовок? (первая непустая строка, где A не распознаётся как месяц)
+    extra_map = {}   # индекс колонки -> ключ summary
+    start = 0
+    for i, r in enumerate(rows):
+        if not any(str(c).strip() for c in r):
             continue
-        # дата во 2-й колонке, заказчик в 3-й
-        date = (row[1] if len(row) > 1 else "").strip()
-        cust = (row[2] if len(row) > 2 else "").strip()
-        if not cust: continue
-        out.append({
-            "date": date, "customer": cust,
-            "format": (row[3] if len(row) > 3 else "").strip(),
-            "guests": num(row[4]) if len(row) > 4 else None,
-            "menu":   num(row[5]) if len(row) > 5 else None,
-            "cogs":   num(row[6]) if len(row) > 6 else None,
-            "fc":     num(row[7]) if len(row) > 7 else None,
-            "check":  num(row[8]) if len(row) > 8 else None,
-            "total":  num(row[16]) if len(row) > 16 else None,
-            "profit": num(row[17]) if len(row) > 17 else None,
-        })
+        if month_key(r[0]) is None:            # это строка-заголовок
+            for j, c in enumerate(r):
+                k = match_extra(c)
+                if k: extra_map[j] = k
+            start = i + 1
+        break
+
+    out = []
+    for r in rows[start:]:
+        if not r or not str(r[0]).strip():
+            continue
+        mk = month_key(r[0])
+        fid = file_id(r[1]) if len(r) > 1 else None
+        if not mk or not fid:
+            continue
+        extras = {}
+        for j, key in extra_map.items():
+            if j < len(r):
+                v = num(r[j])
+                if v is not None:
+                    extras[key] = v
+        out.append({"month": mk, "file_id": fid, "extras": extras})
     return out
 
-# ── B1-B6: продажи по блюдам ──────────────────────────────────────────────────
-def parse_sales(path):
-    r = rows(path)
-    # найти строку заголовка (содержит 'Блюдо')
-    hi, hdr, _ = find_row(r, "блюдо")
-    if hi < 0: return []
-    cols = [norm(c) for c in hdr]
-    def ci(*names):
-        for n in names:
-            for j, c in enumerate(cols):
-                if n in c: return j
-        return -1
-    c_name = ci("блюдо")
-    c_qty  = ci("количество блюд")
-    c_rev  = ci("сумма со скидкой")
-    c_cost = ci("себестоимость, р")
-    c_g1   = ci("группа блюда 1")
-    c_g2   = ci("группа блюда 2")
-    items = []
-    for row in r[hi+1:]:
-        if not row: continue
-        name = (row[c_name] if c_name >= 0 and c_name < len(row) else "").strip()
-        if not name or norm(name) == "итого": continue
-        rev = num(row[c_rev]) if 0 <= c_rev < len(row) else None
-        qty = num(row[c_qty]) if 0 <= c_qty < len(row) else None
-        cost = num(row[c_cost]) if 0 <= c_cost < len(row) else None
-        if rev is None and qty is None and cost is None: continue
-        items.append({
-            "name": name,
-            "g1": (row[c_g1].strip() if 0 <= c_g1 < len(row) else ""),
-            "g2": (row[c_g2].strip() if 0 <= c_g2 < len(row) else ""),
-            "qty": qty, "rev": rev or 0, "cost": cost or 0,
-        })
-    return items
+# ── классификация вкладок ───────────────────────────────────────────────────
+SALE_CATS = [   # (ключевые слова в имени вкладки -> категория продаж)
+    (["a-la carte", "a la carte", "а-ля карт", "меню a"], "kitchen"),
+    (["бар напит", "напитки"], "bar_soft"),
+    (["бар алког", "алкогол"], "bar_alco"),
+    (["мероприят", "банкет"], "banquet"),
+    (["завтрак"], "breakfast"),
+    (["без оплат"], "free"),
+]
+WO_CATS = [     # (ключевые слова -> категория списаний)
+    (["удален"], "wo_deletions"),
+    (["комплемент", "комплимент"], "wo_comp"),
+    (["представит"], "wo_represent"),
+    (["стафф", "питание сотруд", "сотрудник"], "wo_staff"),
+    (["порча"], "wo_spoilage"),
+    (["проработ"], "wo_dev"),
+]
 
-# ── сборка ──────────────────────────────────────────────────────────────────
+def cat_by_name(name, table):
+    n = norm(name)
+    for words, cat in table:
+        if any(w in n for w in words):
+            return cat
+    return None
+
+def cat_by_content(rows, table):
+    """Категория списания по колонке «Счёт списания» (когда имя вкладки — мусор, напр. «Лист1»)."""
+    ci = -1
+    for r in rows:
+        for j, c in enumerate(r):
+            if norm(c) in ("счёт списания", "счет списания"):
+                ci = j; break
+        if ci >= 0: break
+    if ci < 0: return None
+    txt = " ".join(norm(r[ci]) for r in rows if ci < len(r) and r[ci])
+    for words, cat in table:
+        if any(w in txt for w in words):
+            return cat
+    return None
+
+DATE_RE = re.compile(r"^\d{2}\.\d{2}\.\d{4}")
+
+def find_header(rows, *needles):
+    needles = [n.lower() for n in needles]
+    for i, r in enumerate(rows):
+        joined = norm(" | ".join("" if c is None else str(c) for c in r))
+        if all(n in joined for n in needles):
+            return i
+    return -1
+
+def classify(name, rows):
+    """-> ('sale'|'writeoff'|'unknown', hint)"""
+    if find_header(rows, "блюдо", "сумма со скидкой") >= 0:
+        return "sale", cat_by_name(name, SALE_CATS)
+    # акты списания: где-то «акты списания» или колонка «сумма, р.» + строки-даты
+    has_acts = any("акты списания" in norm(" ".join("" if c is None else str(c) for c in r)) for r in rows[:3])
+    has_sum  = find_header(rows, "сумма, р") >= 0
+    has_dates = any(rows and DATE_RE.match(str(r[0]).strip()) for r in rows if r and r[0] is not None)
+    if has_acts or (has_sum and has_dates):
+        return "writeoff", cat_by_name(name, WO_CATS)
+    return "unknown", None
+
+def period_month(rows):
+    """месяц из строки 'Период: с 01.07.2026 ...' внутри листа -> 'YYYY-MM' | None"""
+    for r in rows[:6]:
+        for c in r:
+            m = re.search(r"с\s*\d{2}\.(\d{2})\.(\d{4})", str(c or ""))
+            if m:
+                return f"{m.group(2)}-{m.group(1)}"
+    return None
+
+# ── парсинг листов ──────────────────────────────────────────────────────────
+def parse_sale(rows):
+    """-> (rev_total, cost_total, items[])  берём строку «Итого» + позиции."""
+    hi = find_header(rows, "блюдо")
+    if hi < 0: return 0.0, 0.0, []
+    hdr = [norm(c) for c in rows[hi]]
+    def ci(*names):
+        for nm in names:
+            for j, c in enumerate(hdr):
+                if nm in c: return j
+        return -1
+    c_name = ci("блюдо"); c_qty = ci("количество блюд")
+    c_rev = ci("сумма со скидкой"); c_cost = ci("себестоимость, р")
+    c_g1 = ci("группа блюда 1"); c_g2 = ci("группа блюда 2")
+    items = []; rev_itogo = cost_itogo = None; rev_sum = cost_sum = 0.0
+    for r in rows[hi+1:]:
+        first = norm(r[c_name]) if 0 <= c_name < len(r) else ""
+        if first == "":
+            continue
+        if first == "итого":
+            rev_itogo  = num(r[c_rev])  if 0 <= c_rev  < len(r) else None
+            cost_itogo = num(r[c_cost]) if 0 <= c_cost < len(r) else None
+            continue
+        rev = num(r[c_rev]) if 0 <= c_rev < len(r) else None
+        qty = num(r[c_qty]) if 0 <= c_qty < len(r) else None
+        cost = num(r[c_cost]) if 0 <= c_cost < len(r) else None
+        if rev is None and qty is None and cost is None:
+            continue
+        items.append({"name": str(r[c_name]).strip(),
+                      "g1": (str(r[c_g1]).strip() if 0 <= c_g1 < len(r) and r[c_g1] else ""),
+                      "g2": (str(r[c_g2]).strip() if 0 <= c_g2 < len(r) and r[c_g2] else ""),
+                      "qty": qty, "rev": rev or 0, "cost": cost or 0})
+        rev_sum += rev or 0; cost_sum += cost or 0
+    # «Итого» приоритетнее (точные значения iiko); иначе — сумма позиций
+    rev_total  = rev_itogo  if rev_itogo  is not None else round(rev_sum, 2)
+    cost_total = cost_itogo if cost_itogo is not None else round(cost_sum, 2)
+    return rev_total, cost_total, items
+
+def parse_writeoff(rows):
+    """сумма колонки «Сумма, р.» по строкам-датам."""
+    c_sum = 4
+    for r in rows:
+        for j, c in enumerate(r):
+            if norm(c) == "сумма, р.":
+                c_sum = j; break
+    total = 0.0
+    for r in rows:
+        first = str(r[0]).strip() if r and r[0] is not None else ""
+        if DATE_RE.match(first) and c_sum < len(r):
+            v = num(r[c_sum])
+            if v: total += v
+    return round(total, 2)
+
+# ── сборка одного месяца ────────────────────────────────────────────────────
+def build_month(entry, log):
+    mk, fid, extras = entry["month"], entry["file_id"], entry["extras"]
+    # скачать xlsx
+    data = None
+    for u in (f"https://docs.google.com/spreadsheets/d/{fid}/export?format=xlsx",
+              f"https://drive.google.com/uc?export=download&id={fid}"):
+        try:
+            raw = http_get(u)
+            if raw[:2] == b"PK":
+                data = raw; break
+        except Exception as e:
+            log.append(f"  [{mk}] download err: {e}")
+    if data is None:
+        log.append(f"  [{mk}] ❌ не удалось скачать файл {fid}")
+        return None
+    xpath = RAW / f"{mk}.xlsx"; xpath.write_bytes(data)
+    wb = openpyxl.load_workbook(xpath, read_only=True, data_only=True)
+
+    cat_rev, cat_cost, sales = {}, {}, {}
+    other_rev = other_cost = other_wo = 0.0
+    wo = {"wo_deletions":0.0,"wo_comp":0.0,"wo_represent":0.0,"wo_staff":0.0,"wo_spoilage":0.0,"wo_dev":0.0}
+    seen_period = None
+
+    for sheet in wb.sheetnames:
+        rows = [list(r) for r in wb[sheet].iter_rows(values_only=True)]
+        rows = [r for r in rows if any(c is not None and str(c).strip() for c in r)]
+        if not rows:
+            continue
+        seen_period = seen_period or period_month(rows)
+        kind, cat = classify(sheet, rows)
+        if kind == "sale":
+            rev, cost, items = parse_sale(rows)
+            if cat:
+                cat_rev[cat] = cat_rev.get(cat, 0) + rev
+                cat_cost[cat] = cat_cost.get(cat, 0) + cost
+                sales.setdefault(cat, []).extend(items)
+            else:
+                other_rev += rev; other_cost += cost
+                log.append(f"  [{mk}] ⚠️ незнакомая ВКЛАДКА-ПРОДАЖИ «{sheet}» ({rev:,.0f} ₽) — учтена в прочее")
+        elif kind == "writeoff":
+            total = parse_writeoff(rows)
+            if cat is None:
+                cat = cat_by_content(rows, WO_CATS)   # по «Счёт списания», если имя вкладки не помогло
+            if cat:
+                wo[cat] = wo.get(cat, 0) + total
+            else:
+                other_wo += total
+                log.append(f"  [{mk}] ⚠️ незнакомая ВКЛАДКА-СПИСАНИЯ «{sheet}» ({total:,.0f} ₽) — учтена в прочее")
+        else:
+            log.append(f"  [{mk}] ⚠️ вкладка «{sheet}» не распознана ({len(rows)} строк) — пропущена")
+
+    if seen_period and seen_period != mk:
+        log.append(f"  [{mk}] ⚠️ период в файле = {seen_period} (реестр говорит {mk}) — проверьте ссылку")
+
+    # ── сводка ──
+    g = lambda k: cat_rev.get(k, 0)
+    c = lambda k: cat_cost.get(k, 0)
+    rev_kitchen = g("kitchen"); rev_bs = g("bar_soft"); rev_ba = g("bar_alco")
+    rev_bfast = g("breakfast"); rev_banq = g("banquet")
+    cogs_kitchen = c("kitchen"); cogs_bs = c("bar_soft"); cogs_ba = c("bar_alco")
+    cogs_bfast = c("breakfast"); cogs_banq = c("banquet")
+    rev_alacarte_total = rev_kitchen + rev_bs + rev_ba
+    cogs_alacarte = cogs_kitchen + cogs_bs + cogs_ba
+    # завтраки: пакетные (ЮЛ) vs от стойки — по позициям
+    bp = bc = 0.0
+    for it in sales.get("breakfast", []):
+        if "юл" in norm(it["g1"]) or (it.get("qty") or 0) >= 100: bp += it["rev"]
+        else: bc += it["rev"]
+    wo_sum = sum(wo.values()) + other_wo
+    income_total = rev_kitchen + rev_bs + rev_ba + rev_bfast + rev_banq + other_rev
+    income_total += extras.get("rev_banquet_hall", 0) + extras.get("rev_banquet_cork", 0) + extras.get("rev_services_total", 0)
+    cost_total = cogs_bfast + cogs_alacarte + cogs_banq + wo_sum + other_cost
+    pct = lambda a, b: round(a / b * 100, 2) if b else None
+    ga = extras.get("guests_alacarte"); gb = extras.get("guests_banquet")
+
+    summary = {
+        "rev_breakfast_packets": round(bp, 2), "rev_breakfast_counter": round(bc, 2),
+        "rev_breakfast": round(rev_bfast, 2), "rev_kitchen": round(rev_kitchen, 2),
+        "rev_bar_soft": round(rev_bs, 2), "rev_bar_alco": round(rev_ba, 2),
+        "rev_alacarte_total": round(rev_alacarte_total, 2),
+        "rev_banquet_food": round(rev_banq, 2),
+        "rev_banquet_hall": extras.get("rev_banquet_hall"),
+        "rev_banquet_cork": extras.get("rev_banquet_cork"),
+        "rev_banquet_total": (round(rev_banq + extras.get("rev_banquet_hall", 0) + extras.get("rev_banquet_cork", 0), 2)
+                              if ("rev_banquet_hall" in extras or "rev_banquet_cork" in extras) else None),
+        "rev_services_total": extras.get("rev_services_total"),
+        "income_total": round(income_total, 2),
+        "cogs_breakfast": round(cogs_bfast, 2), "cogs_alacarte": round(cogs_alacarte, 2),
+        "cogs_banquet": round(cogs_banq, 2),
+        "wo_comp": wo["wo_comp"], "wo_spoilage": wo["wo_spoilage"], "wo_represent": wo["wo_represent"],
+        "wo_deletions": wo["wo_deletions"], "wo_staff": wo["wo_staff"], "wo_free": 0.0,
+        "wo_dev": wo["wo_dev"], "cost_total": round(cost_total, 2),
+        "inv_kitchen_start": None, "inv_kitchen_buy": None, "inv_kitchen_end": None,
+        "inv_bar_start": None, "inv_bar_buy": None, "inv_bar_end": None,
+        "inv_total": extras.get("inv_total"),
+        "guests_alacarte": ga, "guests_banquet": gb,
+        "check_alacarte": round(rev_alacarte_total / ga, 2) if ga else None,
+        "check_banquet": round(rev_banq / gb, 2) if gb else None,
+        "fc_kitchen": pct(cogs_kitchen, rev_kitchen), "fc_bar": pct(cogs_bs + cogs_ba, rev_bs + rev_ba),
+        "fc_alacarte": pct(cogs_alacarte, rev_alacarte_total), "fc_breakfast": pct(cogs_bfast, rev_bfast),
+        "fc_banquet": pct(cogs_banq, rev_banq),
+        "fc_total": pct(cogs_bfast + cogs_alacarte + cogs_banq, income_total),
+    }
+    # «Без оплаты» — приход 0, интересна себестоимость -> кладём в wo_free
+    if "free" in cat_cost:
+        summary["wo_free"] = round(cat_cost["free"], 2)
+        summary["cost_total"] = round(summary["cost_total"] + cat_cost["free"], 2)
+
+    log.append(f"  [{mk}] ✓ выручка {income_total:,.0f} ₽ | списания {wo_sum:,.0f} | "
+               f"вкладок-продаж {len(cat_rev)} | FC {summary['fc_total']}%")
+    return {"summary": summary, "sales": sales, "banquets": []}
+
+# ── main ────────────────────────────────────────────────────────────────────
 def build():
+    log = []
+    reg = fetch_registry()
+    log.append(f"Реестр: {len(reg)} месяц(ев) со ссылками: " + ", ".join(e["month"] for e in reg))
     months = {}
-    for month, cfg in MONTHS.items():
-        print(f"[{month}] ...")
-        files = ensure_month(month, cfg)
-        summary  = parse_summary(files["summary"])
-        banquets = parse_banquets(files["banquets"])
-        sales = {t: parse_sales(p) for t, p in files["sales"].items()}
-        months[month] = {"summary": summary, "banquets": banquets, "sales": sales}
-    data = {"generated": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "months": months}
-    js = "// fnb_data.js — auto-generated, do not edit\nwindow.UTRAU_FNB=" + \
+    for entry in reg:
+        m = build_month(entry, log)
+        if m: months[entry["month"]] = m
+    data = {"generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "months": months}
+    js = "// fnb_data.js — auto-generated (registry+all-tabs), do not edit\nwindow.UTRAU_FNB=" + \
          json.dumps(data, ensure_ascii=False) + ";"
     OUT.write_text(js, encoding="utf-8")
+    print("\n".join(log))
     print(f"\nGenerated {OUT} ({len(months)} month(s))")
-    return data
 
 if __name__ == "__main__":
     build()
