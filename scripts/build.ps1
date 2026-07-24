@@ -26,8 +26,8 @@ function Parse-CsvFile($path, $year) {
         $line = $line.Trim()
         if ([string]::IsNullOrEmpty($line)) { continue }
 
-        # Only process daily rows: first field matches DD.MM.YYYY
-        if ($line -notmatch '^\d{2}\.\d{2}\.\d{4},') { continue }
+        # Skip lines without any DD.MM.YYYY date
+        if ($line -notmatch '\d{2}\.\d{2}\.\d{4}') { continue }
 
         # Parse quoted CSV manually
         $cols = @()
@@ -39,9 +39,19 @@ function Parse-CsvFile($path, $year) {
         }
         $cols += $cur
 
+        # Date is normally in column A. If a row is shifted it lands in column B,
+        # while the other columns keep their positions (revenue stays at index 2).
         $raw = $cols[0].Trim()
-        if ($raw -notmatch '^(\d{2})\.(\d{2})\.(\d{4})$') { continue }
+        if ($raw -notmatch '^(\d{2})\.(\d{2})\.(\d{4})$') {
+            if ($cols.Count -gt 1 -and $cols[1].Trim() -match '^(\d{2})\.(\d{2})\.(\d{4})$') {
+                $raw = $cols[1].Trim()
+            } else { continue }
+        }
+        [void]($raw -match '^(\d{2})\.(\d{2})\.(\d{4})$')
         $iso = "$($Matches[3])-$($Matches[2])-$($Matches[1])"
+
+        # Skip empty placeholder rows (future dates with no revenue yet)
+        if ($cols.Count -le 2 -or [string]::IsNullOrWhiteSpace($cols[2])) { continue }
 
         function G($i) { if ($cols.Count -gt $i) { return $cols[$i] } else { return "" } }
 
