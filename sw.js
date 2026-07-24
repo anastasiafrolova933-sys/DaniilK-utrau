@@ -2,7 +2,7 @@
  * sw.js — Service Worker для PWA «Утрау».
  * Кэш статики (cache-first), HTML/JSON network-first, обработка push.
  */
-const CACHE_VERSION = 'utrau-v1-2026-06-29';
+const CACHE_VERSION = 'utrau-v2-2026-07-24';
 const STATIC_CACHE = 'utrau-static-' + CACHE_VERSION;
 const RUNTIME_CACHE = 'utrau-runtime-' + CACHE_VERSION;
 const BASE = '/DaniilK-utrau/';
@@ -41,6 +41,12 @@ self.addEventListener('fetch', (event) => {
   }
   const accept = req.headers.get('accept') || '';
   if (accept.includes('text/html') || url.pathname.endsWith('.html') || url.pathname.endsWith('.json')) {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+  // Данные отчётов (data/*.js) — network-first: свежие цифры важнее офлайна.
+  // Иначе cache-first ниже замораживает .js навсегда и дашборды не обновляются.
+  if (url.pathname.includes('/data/') || url.pathname.endsWith('_data.js')) {
     event.respondWith(networkFirst(req));
     return;
   }
