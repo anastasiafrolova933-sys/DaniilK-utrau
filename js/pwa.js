@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://direct-render-singles-helping.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://dolls-ata-principal-stewart.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
