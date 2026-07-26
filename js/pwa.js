@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://dolls-ata-principal-stewart.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://protected-cabinets-draw-bytes.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
