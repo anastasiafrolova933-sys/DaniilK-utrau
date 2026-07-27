@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://protected-cabinets-draw-bytes.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://quiet-tiny-generate-switched.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;

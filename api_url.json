@@ -1,5 +1,5 @@
 {
-    "url":  "https://protected-cabinets-draw-bytes.trycloudflare.com",
-    "updated":  "2026-07-26T06:00:11+03:00",
+    "url":  "https://quiet-tiny-generate-switched.trycloudflare.com",
+    "updated":  "2026-07-27T06:00:13+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
