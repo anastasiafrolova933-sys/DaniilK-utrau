@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://guidelines-weight-suse-bringing.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://tissue-cho-grateful-pounds.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
