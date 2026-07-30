@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://tissue-cho-grateful-pounds.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://itself-dentists-resist-counties.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
