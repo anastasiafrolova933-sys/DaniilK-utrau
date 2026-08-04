@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://differential-valued-comfort-auburn.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://meat-teddy-casino-freight.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
