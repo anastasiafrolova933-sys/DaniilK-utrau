@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://translation-purchase-imperial-flux.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://payroll-aimed-landing-brings.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
