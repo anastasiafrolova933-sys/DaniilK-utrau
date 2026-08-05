@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://parliament-ssl-results-regions.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://yes-condition-artificial-recipe.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
