@@ -1,5 +1,5 @@
 {
-    "url":  "https://payroll-aimed-landing-brings.trycloudflare.com",
-    "updated":  "2026-08-05T13:35:15+03:00",
+    "url":  "https://api.trycloudflare.com",
+    "updated":  "2026-08-05T14:45:44+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
