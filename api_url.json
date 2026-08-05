@@ -1,5 +1,5 @@
 {
-    "url":  "https://yes-condition-artificial-recipe.trycloudflare.com",
-    "updated":  "2026-08-05T06:00:11+03:00",
+    "url":  "https://api.trycloudflare.com",
+    "updated":  "2026-08-05T12:55:42+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
