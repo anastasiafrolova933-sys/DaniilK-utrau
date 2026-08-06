@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://revenues-massage-coastal-yale.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://lucky-celebrate-buy-suggesting.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
