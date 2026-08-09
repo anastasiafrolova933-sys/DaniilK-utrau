@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://smooth-exchange-reasonable-skills.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://attempted-reputation-architectural-associations.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
