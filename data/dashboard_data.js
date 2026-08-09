@@ -1,5 +1,5 @@
-﻿// Auto-generated 2026-08-08 10:00 - do not edit
-window.UTRAU_DATA={generated:"2026-08-08 10:00",daily:[
+﻿// Auto-generated 2026-08-09 10:00 - do not edit
+window.UTRAU_DATA={generated:"2026-08-09 10:00",daily:[
   {"date":"2024-01-01","year":2024,"revenue":1662980,"roomNights":40,"guestArrivals":0,"roomArrivals":0,"adr":41574.5,"revpar":35382.55,"als":0,"totalRooms":52,"underRepair":5,"availRooms":47,"occupancy":85.11},
   {"date":"2024-01-02","year":2024,"revenue":272640,"roomNights":10,"guestArrivals":27,"roomArrivals":10,"adr":27264,"revpar":5926.96,"als":2,"totalRooms":52,"underRepair":6,"availRooms":46,"occupancy":21.74},
   {"date":"2024-01-03","year":2024,"revenue":430140,"roomNights":16,"guestArrivals":33,"roomArrivals":11,"adr":26883.75,"revpar":9558.67,"als":1.45,"totalRooms":52,"underRepair":7,"availRooms":45,"occupancy":35.56},
@@ -944,5 +944,10 @@ window.UTRAU_DATA={generated:"2026-08-08 10:00",daily:[
   {"date":"2026-07-30","year":2026,"revenue":330963,"roomNights":36,"guestArrivals":56,"roomArrivals":20,"adr":10860.08,"revpar":7240.06,"als":1.5,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":66.67},
   {"date":"2026-07-31","year":2026,"revenue":498422,"roomNights":36,"guestArrivals":65,"roomArrivals":25,"adr":13845.06,"revpar":9230.04,"als":1.36,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":66.67},
   {"date":"2026-08-01","year":2026,"revenue":815391,"roomNights":54,"guestArrivals":120,"roomArrivals":44,"adr":14058.47,"revpar":15099.83,"als":1.05,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":107.41},
-  {"date":"2026-08-02","year":2026,"revenue":394702,"roomNights":41,"guestArrivals":74,"roomArrivals":30,"adr":9626.88,"revpar":7309.3,"als":1.67,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":75.93}
+  {"date":"2026-08-02","year":2026,"revenue":394702,"roomNights":41,"guestArrivals":74,"roomArrivals":30,"adr":9626.88,"revpar":7309.3,"als":1.67,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":75.93},
+  {"date":"2026-08-03","year":2026,"revenue":394780,"roomNights":34,"guestArrivals":62,"roomArrivals":23,"adr":11611.18,"revpar":7310.74,"als":1.7,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":62.96},
+  {"date":"2026-08-04","year":2026,"revenue":408020,"roomNights":36,"guestArrivals":58,"roomArrivals":22,"adr":11333.89,"revpar":7555.93,"als":1.68,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":66.67},
+  {"date":"2026-08-05","year":2026,"revenue":549303,"roomNights":46,"guestArrivals":76,"roomArrivals":27,"adr":11941.37,"revpar":10172.28,"als":1.44,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":85.19},
+  {"date":"2026-08-06","year":2026,"revenue":424919,"roomNights":37,"guestArrivals":51,"roomArrivals":18,"adr":11484.3,"revpar":7868.87,"als":1.28,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":68.52},
+  {"date":"2026-08-07","year":2026,"revenue":671074,"roomNights":47,"guestArrivals":97,"roomArrivals":37,"adr":14278.17,"revpar":12427.3,"als":1.14,"totalRooms":54,"underRepair":0,"availRooms":54,"occupancy":87.04}
 ]};
