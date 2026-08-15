@@ -1,5 +1,5 @@
 {
-    "url":  "https://api.trycloudflare.com",
-    "updated":  "2026-08-15T11:45:43+03:00",
+    "url":  "https://part-florists-turn-counseling.trycloudflare.com",
+    "updated":  "2026-08-15T11:50:13+03:00",
     "note":  "Auto-updated by start_server.ps1. Dynamic cloudflared tunnel URL; clients fetch no-cache."
 }
