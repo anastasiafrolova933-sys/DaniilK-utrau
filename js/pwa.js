@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://classes-principal-possession-utilize.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://confidentiality-homeland-gas-rentals.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;

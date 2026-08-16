@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var DEFAULT_SERVER = 'https://classes-principal-possession-utilize.trycloudflare.com'; // подменяется start_server.ps1 на туннель
+  var DEFAULT_SERVER = 'https://confidentiality-homeland-gas-rentals.trycloudflare.com'; // подменяется start_server.ps1 на туннель
   var serverUrl = null;
 
   function detectReportId() {
