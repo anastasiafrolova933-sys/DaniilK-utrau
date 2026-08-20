@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://sure-artwork-poker-prison.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://printers-bargain-newspaper-plate.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
