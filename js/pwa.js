@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://her-tuner-lance-cause.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://identifier-relaxation-contributed-respectively.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
