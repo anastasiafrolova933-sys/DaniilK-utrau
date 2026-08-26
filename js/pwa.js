@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://handbook-printable-sons-stored.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://inventory-draft-jokes-recording.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
