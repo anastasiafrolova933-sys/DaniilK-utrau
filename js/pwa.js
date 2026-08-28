@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://dimensional-legacy-mainstream-selected.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://cruises-attributes-register-valuation.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
