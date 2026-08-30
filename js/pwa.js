@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://existed-calendar-packed-meaningful.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://medicine-responses-calls-formatting.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
