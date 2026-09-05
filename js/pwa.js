@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://job-giants-excel-vol.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://identify-lafayette-doug-needed.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;

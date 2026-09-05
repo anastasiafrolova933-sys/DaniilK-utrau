@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var DEFAULT_SERVER = 'https://job-giants-excel-vol.trycloudflare.com'; // подменяется start_server.ps1 на туннель
+  var DEFAULT_SERVER = 'https://identify-lafayette-doug-needed.trycloudflare.com'; // подменяется start_server.ps1 на туннель
   var serverUrl = null;
 
   function detectReportId() {
