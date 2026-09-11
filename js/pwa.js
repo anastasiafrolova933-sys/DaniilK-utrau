@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://gravity-work-terrorist-responded.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://tile-url-faq-harrison.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
