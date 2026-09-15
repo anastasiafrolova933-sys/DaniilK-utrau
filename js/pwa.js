@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://lauderdale-colored-minor-edition.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://perry-jun-delaware-color.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
