@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://works-enrolled-flag-relevance.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://lover-significantly-sherman-dependent.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
