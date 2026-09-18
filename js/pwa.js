@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://lover-significantly-sherman-dependent.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://plastic-printed-specials-bidding.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
