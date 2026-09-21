@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://soc-their-podcasts-mar.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://series-comedy-mike-sterling.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
