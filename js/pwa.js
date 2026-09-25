@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://sin-herb-bye-partners.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://cir-compile-updates-afterwards.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
