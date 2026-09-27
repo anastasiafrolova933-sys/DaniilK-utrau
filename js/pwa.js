@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://highway-smile-leonard-bbs.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://height-simplified-employment-recognize.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
