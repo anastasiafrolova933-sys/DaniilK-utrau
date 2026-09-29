@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://backgrounds-frog-vehicles-forest.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://cheats-indie-pairs-soccer.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
