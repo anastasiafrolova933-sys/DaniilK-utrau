@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://arts-gsm-beads-ballot.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://launched-berkeley-reasonably-winter.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
