@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://tribal-liberty-projected-contribute.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://showtimes-facilitate-drug-mailing.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
