@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://nova-exception-issue-beast.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://ready-funky-enquiries-excitement.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
