@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var DEFAULT_SERVER = 'https://ready-funky-enquiries-excitement.trycloudflare.com'; // подменяется start_server.ps1 на туннель
+  var DEFAULT_SERVER = 'https://institutes-weighted-increasingly-reward.trycloudflare.com'; // подменяется start_server.ps1 на туннель
   var serverUrl = null;
 
   function detectReportId() {
