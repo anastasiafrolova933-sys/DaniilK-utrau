@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://institutes-weighted-increasingly-reward.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://allan-flood-accomplished-instructional.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
