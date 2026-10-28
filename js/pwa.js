@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://remark-breach-rankings-collins.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://pie-charlie-brandon-johnston.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
