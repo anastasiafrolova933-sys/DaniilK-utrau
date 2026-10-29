@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://pie-charlie-brandon-johnston.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://divisions-organic-donations-specialists.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
