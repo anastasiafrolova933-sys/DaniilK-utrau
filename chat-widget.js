@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var DEFAULT_SERVER = 'https://divisions-organic-donations-specialists.trycloudflare.com'; // подменяется start_server.ps1 на туннель
+  var DEFAULT_SERVER = 'https://trail-brochures-asin-innovative.trycloudflare.com'; // подменяется start_server.ps1 на туннель
   var serverUrl = null;
 
   function detectReportId() {

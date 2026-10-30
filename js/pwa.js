@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://divisions-organic-donations-specialists.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://trail-brochures-asin-innovative.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
