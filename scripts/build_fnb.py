@@ -18,7 +18,7 @@ build_fnb.py — F&B Службы питания Утрау (ресторан К
 
 Запуск: python scripts/build_fnb.py
 """
-import re, io, json, csv, sys, urllib.request, datetime
+import re, io, json, csv, sys, urllib.request, urllib.error, datetime
 from pathlib import Path
 import openpyxl
 
@@ -57,6 +57,13 @@ def month_key(text):
     ym = re.search(r"(20\d{2})", s)
     if mon and ym:
         return f"{ym.group(1)}-{mon:02d}"
+    # числовые варианты: «07.2026», «7/2026», «2026-07»
+    m = re.fullmatch(r"(\d{1,2})[./-](20\d{2})", s) or None
+    if m and 1 <= int(m.group(1)) <= 12:
+        return f"{m.group(2)}-{int(m.group(1)):02d}"
+    m = re.fullmatch(r"(20\d{2})[./-](\d{1,2})", s)
+    if m and 1 <= int(m.group(2)) <= 12:
+        return f"{m.group(1)}-{int(m.group(2)):02d}"
     return None
 
 def file_id(url):
@@ -89,8 +96,9 @@ def match_extra(header_cell):
             return key
     return None
 
-def fetch_registry():
-    """-> список dict: {month, file_id, extras{}}"""
+def fetch_registry(issues=None):
+    """-> список dict: {month, file_id, extras{}}; строки, которые не удалось прочитать, -> issues"""
+    issues = issues if issues is not None else []
     url = f"https://docs.google.com/spreadsheets/d/{REGISTRY_ID}/export?format=csv"
     raw = http_get(url, 30).decode("utf-8", errors="replace")
     if raw.lstrip().startswith("<"):
@@ -111,13 +119,19 @@ def fetch_registry():
         break
 
     out = []
-    for r in rows[start:]:
-        if not r or not str(r[0]).strip():
+    for n, r in enumerate(rows[start:], start + 1):
+        if not r or not any(str(c).strip() for c in r):
             continue
         mk = month_key(r[0])
         fid = file_id(r[1]) if len(r) > 1 else None
         if not mk or not fid:
+            # раньше такие строки молча терялись — теперь видно, что поправить в реестре
+            why = "не распознан месяц (нужно «Сентябрь 2026»)" if not mk else "в колонке B нет ссылки на Google-таблицу"
+            issues.append({"row": n, "text": " | ".join(str(c).strip() for c in r[:2]), "problem": why})
             continue
+        if any(e["month"] == mk for e in out):
+            issues.append({"row": n, "text": str(r[0]).strip(), "problem": f"месяц {mk} указан в реестре дважды — берётся нижняя строка"})
+            out = [e for e in out if e["month"] != mk]
         extras = {}
         for j, key in extra_map.items():
             if j < len(r):
@@ -389,7 +403,19 @@ def parse_a1(rows, extras, log):
 WO_WORDS = {"представительск": "wo_represent", "порча": "wo_spoilage", "комплимент": "wo_comp",
             "удаление": "wo_deletions", "проработ": "wo_dev", "стафф": "wo_staff"}
 
-def parse_sheet1(rows, extras, log):
+def sheet1_cat(label):
+    """Строка Sheet1 -> категория продаж/себеса (одна логика для секций «Доход» и «Себес»)."""
+    if "напитки" in label: return "bar_soft"
+    if label.startswith("пиво") or "крепкая" in label or "вино" in label or "коктел" in label: return "bar_alco"
+    if "банкет" in label: return "banquet"
+    # «Свободное блюдо» в iiko — группа КУХНЯ / МЕНЮ A LA CARTE; «Сеты/пакеты» (себес «Сеты») —
+    # тоже продажи с меню а-ля карт. До 02.11.2026 эти строки молча выпадали из разбивки.
+    if "меню аля" in label or "аля карт" in label or "свободное блюдо" in label or label.startswith("сет"):
+        return "kitchen"
+    if "завтрак" in label: return "breakfast"
+    return None
+
+def parse_sheet1(rows, extras, log, mk=""):
     col_total = None
     for r in rows:                                    # колонка «Общее» из заголовка
         for j, cc in enumerate(r):
@@ -397,7 +423,7 @@ def parse_sheet1(rows, extras, log):
         if col_total is not None: break
     if col_total is None:
         col_total = max((len(r) for r in rows), default=1) - 1
-    rev = {}; cogs = {}; income = None; other_wo = 0.0
+    rev = {}; cogs = {}; income = None; other_wo = 0.0; other_rev = 0.0; other_cost = 0.0
     wo = {v: 0.0 for v in set(WO_WORDS.values())}
     section = "income"
     for r in rows:
@@ -408,33 +434,33 @@ def parse_sheet1(rows, extras, log):
         v = num(r[col_total]) if col_total < len(r) else None
         if v is None: continue
         if section == "income":
+            cat = sheet1_cat(label)
             if "доход fb" in label: income = v
-            elif "напитки" in label: rev["bar_soft"] = rev.get("bar_soft", 0) + v
-            elif label.startswith("пиво") or "крепкая" in label or "вино" in label or "коктел" in label:
-                rev["bar_alco"] = rev.get("bar_alco", 0) + v
-            elif "банкет" in label: rev["banquet"] = rev.get("banquet", 0) + v
-            elif "меню аля" in label or "аля карт" in label: rev["kitchen"] = rev.get("kitchen", 0) + v
-            elif "завтрак" in label: rev["breakfast"] = rev.get("breakfast", 0) + v
+            elif cat: rev[cat] = rev.get(cat, 0) + v
             elif "услуг" in label or "рум сервис" in label: rev["services"] = rev.get("services", 0) + v
             elif "пробковый" in label: rev["cork"] = rev.get("cork", 0) + v
+            elif "округлен" in label: pass                  # копейки «в пользу гостя» — не категория
+            else:                                            # незнакомая строка не теряется
+                other_rev += v
+                log.append(f"  [{mk}] ⚠️ незнакомая строка дохода «{label}» ({v:,.0f} ₽) — в «прочее»")
         else:                                          # секция себес: себес-категории + списания
             wcat = next((k for w, k in WO_WORDS.items() if w in label), None)
+            cat = sheet1_cat(label)
             if wcat: wo[wcat] += v
             elif "маркетинг" in label: other_wo += v
-            elif "напитки" in label: cogs["bar_soft"] = cogs.get("bar_soft", 0) + v
-            elif label.startswith("пиво") or "крепкая" in label or "вино" in label:
-                cogs["bar_alco"] = cogs.get("bar_alco", 0) + v
-            elif "банкет" in label: cogs["banquet"] = cogs.get("banquet", 0) + v
-            elif "меню аля" in label or "аля карт" in label: cogs["kitchen"] = cogs.get("kitchen", 0) + v
-            elif "завтрак" in label: cogs["breakfast"] = cogs.get("breakfast", 0) + v
-    return {"summary": build_summary(
+            elif cat: cogs[cat] = cogs.get(cat, 0) + v
+            else:
+                other_cost += v
+                log.append(f"  [{mk}] ⚠️ незнакомая строка себеса «{label}» ({v:,.0f} ₽) — в «прочее»")
+    summary = build_summary(
         rev_kitchen=rev.get("kitchen", 0), rev_bs=rev.get("bar_soft", 0), rev_ba=rev.get("bar_alco", 0),
         rev_bfast=rev.get("breakfast", 0), rev_banq=rev.get("banquet", 0),
         cogs_kitchen=cogs.get("kitchen", 0), cogs_bs=cogs.get("bar_soft", 0), cogs_ba=cogs.get("bar_alco", 0),
         cogs_bfast=cogs.get("breakfast", 0), cogs_banq=cogs.get("banquet", 0),
-        wo=wo, other_wo=other_wo, income_override=income,
-        banquet_cork=rev.get("cork"), services=rev.get("services"), extras=extras),
-        "sales": {}, "banquets": []}
+        wo=wo, other_wo=other_wo, other_cost=other_cost, income_override=income,
+        banquet_cork=rev.get("cork"), services=rev.get("services"), extras=extras)
+    summary["rev_other"] = round(other_rev, 2) if other_rev else None
+    return {"summary": summary, "sales": {}, "banquets": []}
 
 # ── определить формат книги ─────────────────────────────────────────────────
 def detect_format(wb):
@@ -446,42 +472,88 @@ def detect_format(wb):
         if "доход fb" in txt: return "sheet1"
     return None
 
-# ── сборка одного месяца (скачать -> определить формат -> распарсить) ─────────
-def build_month(entry, log):
-    mk, fid, extras = entry["month"], entry["file_id"], entry["extras"]
-    data = None
+# ── скачивание файла месяца ─────────────────────────────────────────────────
+NO_ACCESS_MSG = "файл закрыт: владельцу открыть «Доступ по ссылке → Просмотр»"
+
+def fetch_book(fid):
+    """-> (bytes | None, kind, msg); kind: ok | no_access | not_found | error"""
+    kinds = []
     for u in (f"https://docs.google.com/spreadsheets/d/{fid}/export?format=xlsx",
               f"https://drive.google.com/uc?export=download&id={fid}"):
         try:
             raw = http_get(u)
-            if raw[:2] == b"PK": data = raw; break
+            if raw[:2] == b"PK":
+                return raw, "ok", ""
+            head = raw[:20000].lower()
+            # Google отдаёт страницу входа (200 OK), если файл не открыт по ссылке
+            kinds.append(("no_access", NO_ACCESS_MSG) if b"accounts.google.com" in head or b"signin" in head
+                         else ("error", "вместо XLSX пришла HTML-страница"))
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403): kinds.append(("no_access", f"HTTP {e.code} — {NO_ACCESS_MSG}"))
+            elif e.code == 404:      kinds.append(("not_found", "HTTP 404 — файл удалён или ссылка неверная"))
+            else:                    kinds.append(("error", f"HTTP {e.code}"))
         except Exception as e:
-            log.append(f"  [{mk}] download err: {e}")
-    if data is None:
-        log.append(f"  [{mk}] ❌ не удалось скачать файл {fid}")
-        return None
-    xpath = RAW / f"{mk}.xlsx"; xpath.write_bytes(data)
+            kinds.append(("error", f"{type(e).__name__}: {e}"))
+    for want in ("no_access", "not_found"):
+        for k, msg in kinds:
+            if k == want: return None, k, msg
+    return None, kinds[-1][0], kinds[-1][1]
+
+# ── сборка одного месяца (скачать -> определить формат -> распарсить) ─────────
+def build_month(entry, log, status):
+    """status[mk] = {state, msg, ...}; state: ok | cache | no_access | not_found | error | unknown_format | empty"""
+    mk, fid, extras = entry["month"], entry["file_id"], entry["extras"]
+    st = status[mk] = {"state": "ok", "msg": "", "file_id": fid}
+    log_start = len(log)
+    xpath = RAW / f"{mk}.xlsx"
+    meta_path = RAW / f"{mk}.json"                   # от какого файла и когда сохранена копия
+    data, kind, msg = fetch_book(fid)
+    if data is not None:
+        xpath.write_bytes(data)
+        meta_path.write_text(json.dumps({"file_id": fid, "saved": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}),
+                             encoding="utf-8")
+    else:
+        meta = {}
+        try: meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception: pass
+        if xpath.exists() and meta.get("file_id") == fid:
+            # временный сбой Google не должен стирать месяц с дашборда — берём последнюю удачную копию
+            st.update(state="cache", msg=f"{msg}; показана копия от {meta.get('saved')}")
+            log.append(f"  [{mk}] ⚠️ не скачался ({msg}) — беру сохранённую копию от {meta.get('saved')}")
+        else:
+            st.update(state=kind, msg=msg)
+            log.append(f"  [{mk}] ❌ не скачался: {msg} (файл {fid})")
+            return None
     wb = openpyxl.load_workbook(xpath, read_only=True, data_only=True)
 
     fmt = detect_format(wb)
     if fmt is None:
+        st.update(state="unknown_format", msg=f"формат не распознан (вкладки: {', '.join(wb.sheetnames)})")
         log.append(f"  [{mk}] ⛔ формат не распознан (вкладки: {wb.sheetnames}) — месяц ПРОПУЩЕН")
         return None
     if fmt == "iiko":
         res = parse_iiko(wb, mk, extras, log)
     else:
         # A1 / Sheet1 — данные на одной вкладке; берём первую непустую
-        rows = []
+        rows = []; used = None
         for sh in wb.sheetnames:
             rows = [list(r) for r in wb[sh].iter_rows(values_only=True)]
             rows = [r for r in rows if any(c is not None and str(c).strip() for c in r)]
-            if rows: break
-        res = parse_a1(rows, extras, log) if fmt == "a1" else parse_sheet1(rows, extras, log)
+            if rows: used = sh; break
+        for sh in wb.sheetnames[wb.sheetnames.index(used) + 1:] if used else []:
+            if any(any(c is not None and str(c).strip() for c in r) for r in wb[sh].iter_rows(values_only=True)):
+                log.append(f"  [{mk}] ⚠️ вкладка «{sh}» не прочитана: формат «{fmt}» берёт только «{used}»")
+                st["msg"] = (st["msg"] + "; " if st["msg"] else "") + f"вкладка «{sh}» не прочитана"
+        res = parse_a1(rows, extras, log) if fmt == "a1" else parse_sheet1(rows, extras, log, mk)
 
     if res is None:
+        st.update(state="empty", msg=f"формат «{fmt}», но данных нет")
         log.append(f"  [{mk}] ⛔ формат «{fmt}» дал пусто — месяц ПРОПУЩЕН")
         return None
     s = res["summary"]
+    st["format"] = fmt; st["income_total"] = s["income_total"]
+    warns = [l.strip() for l in log[log_start:] if "⚠️" in l]
+    if warns: st["warnings"] = warns
     wo_sum = sum(v for v in [s["wo_comp"], s["wo_spoilage"], s["wo_represent"], s["wo_deletions"],
                              s["wo_staff"], s["wo_dev"], s.get("wo_free", 0)] if v)
     log.append(f"  [{mk}] ✓ [{fmt}] выручка {s['income_total']:,.0f} ₽ | списания {wo_sum:,.0f} | FC {s['fc_total']}%")
@@ -489,19 +561,23 @@ def build_month(entry, log):
 
 # ── main ────────────────────────────────────────────────────────────────────
 def build():
-    log = []
-    reg = fetch_registry()
+    log = []; issues = []; status = {}
+    reg = fetch_registry(issues)
     log.append(f"Реестр: {len(reg)} месяц(ев) со ссылками: " + ", ".join(e["month"] for e in reg))
+    for it in issues:
+        log.append(f"  ⚠️ реестр, строка {it['row']} «{it['text']}»: {it['problem']}")
     months = {}
     for entry in reg:
-        m = build_month(entry, log)
+        m = build_month(entry, log, status)
         if m: months[entry["month"]] = m
-    data = {"generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "months": months}
+    data = {"generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "months": months,
+            "status": status, "registry_issues": issues}
     js = "// fnb_data.js — auto-generated (registry+all-tabs), do not edit\nwindow.UTRAU_FNB=" + \
          json.dumps(data, ensure_ascii=False) + ";"
     OUT.write_text(js, encoding="utf-8")
     print("\n".join(log))
-    print(f"\nGenerated {OUT} ({len(months)} month(s))")
+    bad = [f"{k}: {v['msg']}" for k, v in sorted(status.items()) if v["state"] not in ("ok",)]
+    print(f"\nGenerated {OUT} ({len(months)} month(s))" + (f" | ПРОБЛЕМЫ: {'; '.join(bad)}" if bad else ""))
 
 if __name__ == "__main__":
     build()

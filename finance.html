@@ -574,7 +574,7 @@ function init() {
   var yearsSet = {};
   DATA.forEach(function(r){ yearsSet[r.year] = true; });
   state.years = Object.keys(yearsSet).map(Number).sort();
-  state.selYear = state.years[0];
+  state.selYear = state.years[state.years.length - 1];   // открываемся на текущем году, а не на 2024
 
   // Year buttons
   var yc = document.getElementById('year-btns');
@@ -969,5 +969,6 @@ init();
 <script src="js/pwa.js"></script>
 <script src="notify.js"></script>
 <script src="chat-widget.js" data-report="finance"></script>
+<script src="js/freshness.js?v=1" data-report="finance"></script>
 </body>
 </html>

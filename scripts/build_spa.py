@@ -8,9 +8,12 @@ build_spa.py — СПА / Банный комплекс Утрау (доп. ус
 XLSX-подход: новые месяцы (вкладки) подхватываются автоматически, gid'ы не нужны.
 Запуск: python scripts/build_spa.py
 """
-import re, io, json, urllib.request, datetime
+import re, io, sys, json, urllib.request, datetime
 from pathlib import Path
 import openpyxl
+
+try: sys.stdout.reconfigure(encoding="utf-8")   # Windows-консоль иначе падает на эмодзи
+except Exception: pass
 
 ROOT = Path(__file__).resolve().parent.parent
 XLSX = ROOT / "data" / "spa_raw.xlsx"
@@ -74,6 +77,7 @@ def parse_sheet(ws):
         if name is None: continue
         name = str(name).strip()
         if not name or name.lower() == "название": continue
+        if re.match(r"^(итого|всего)\b", name.lower()): continue   # строка-итог задвоила бы выручку
         rev = num(row[1]) if len(row) > 1 else None
         if rev is None: continue
         services.append({"name": name, "rev": rev, "cat": categorize(name)})
@@ -84,21 +88,33 @@ def build():
     wb = openpyxl.load_workbook(XLSX, read_only=True, data_only=True)
     months = {}
     skipped = []
+    status = {"empty_tabs": [], "unrecognized_tabs": [], "same_month_tabs": [], "duplicate_content": []}
+    tab_of = {}                                       # месяц -> имя вкладки, из которой он взят
     for sheet in wb.sheetnames:
         mo = detect_month(sheet)
         ws = wb[sheet]
         services = parse_sheet(ws)
         if not services:
             skipped.append((sheet, "пусто"))
+            status["empty_tabs"].append({"tab": sheet.strip(), "month": mo})
             continue
         if not mo:
             skipped.append((sheet, "не распознан месяц"))
+            status["unrecognized_tabs"].append(sheet.strip())
             continue
         total = round(sum(s["rev"] for s in services), 2)
+        # одинаковое содержимое у разных месяцев = скорее всего вкладку скопировали и не обновили
+        for m2, v2 in months.items():
+            if m2 != mo and v2["services"] == services:
+                status["duplicate_content"].append({"tabs": [tab_of[m2], sheet.strip()], "months": [m2, mo]})
         # если месяц уже есть (дубль) — берём больший по сумме
+        if mo in months:
+            status["same_month_tabs"].append({"month": mo, "tabs": [tab_of[mo], sheet.strip()]})
         if mo not in months or total > months[mo]["total"]:
             months[mo] = {"total": total, "services": services}
-    data = {"generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "months": months}
+            tab_of[mo] = sheet.strip()
+    data = {"generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "months": months,
+            "status": status}
     js = "// spa_data.js — auto-generated, do not edit\nwindow.UTRAU_SPA=" + \
          json.dumps(data, ensure_ascii=False) + ";"
     OUT.write_text(js, encoding="utf-8")
@@ -107,6 +123,10 @@ def build():
         print(f"  {mo}: {months[mo]['total']:>14,.0f}  ({len(months[mo]['services'])} услуг)")
     if skipped:
         print("Пропущены:", ", ".join(f"{s}({r})" for s,r in skipped))
+    for d in status["duplicate_content"]:
+        print(f"⚠️ вкладки {d['tabs'][0]} и {d['tabs'][1]} совпадают построчно ({d['months'][0]} = {d['months'][1]})")
+    for d in status["same_month_tabs"]:
+        print(f"⚠️ месяц {d['month']} найден в двух вкладках: {', '.join(d['tabs'])} — взята большая по сумме")
     print(f"Generated {OUT}")
 
 if __name__ == "__main__":

@@ -1,52 +1,19 @@
-# download.ps1 - Download CSV tabs from Google Sheets
+# download.ps1 - Download all Google Sheets sources and rebuild every data/*.js
 # Zagorodny klub Utrau | OOO Best Glamp
 # Run: powershell -ExecutionPolicy Bypass -File .\scripts\download.ps1
+# NOTE: keep this file pure ASCII (PowerShell 5.1 reads BOM-less files in the ANSI codepage).
 
-$SHEET_ID = "1N9YFy76rV3KcZnN5EwSt8Y-Ji0Y7WpHkwkBrgndChuw"
-
-# Tab GIDs - add new years here
-$TABS = @{
-    "2024" = "1688657215"
-    "2025" = "881244924"
-    "2026" = "253518640"
-}
-
+$PYTHON = 'C:\Users\CloudUser\AppData\Local\Programs\Python\Python312\python.exe'
 $DATA_DIR = Join-Path $PSScriptRoot "..\data"
 New-Item -ItemType Directory -Force -Path $DATA_DIR | Out-Null
+$failed = @()
 
-$ok = 0
-$fail = 0
+# ---- 1. Finance (Dokhodnost i zagruzka): build_finance.py downloads all tabs itself ----
+Write-Host "Running build.ps1 (finance)..." -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot "build.ps1")
+if ($LASTEXITCODE -ne 0) { $failed += "finance" }
 
-foreach ($year in ($TABS.Keys | Sort-Object)) {
-    $gid = $TABS[$year]
-    if ([string]::IsNullOrEmpty($gid)) {
-        Write-Host "[$year] gid not set - skip" -ForegroundColor Yellow
-        continue
-    }
-
-    $url  = "https://docs.google.com/spreadsheets/d/$SHEET_ID/export?format=csv" + "&gid=$gid"
-    $dest = Join-Path $DATA_DIR "raw_$year.csv"
-
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -ErrorAction Stop
-        $rows = (Get-Content $dest).Count
-        Write-Host "[$year] OK ($rows rows)" -ForegroundColor Green
-        $ok++
-    } catch {
-        Write-Host "[$year] ERROR: $_" -ForegroundColor Red
-        $fail++
-    }
-}
-
-Write-Host ""
-Write-Host "Downloaded: $ok | Errors: $fail"
-
-if ($fail -eq 0) {
-    Write-Host "Running build.ps1..." -ForegroundColor Cyan
-    & (Join-Path $PSScriptRoot "build.ps1")
-}
-
-# ---- Budget workbook (separate sheet) ----
+# ---- 2. Budget workbook (separate sheet) ----
 $BUDGET_ID = "1q-5vyXwY0zgB1VtzPh8hn2ZmZ3ieuiMp-u15rIwb1Pg"
 $BUDGET_TABS = @{
     "tab1" = "1663630612"   # BDR (P&L)
@@ -58,31 +25,48 @@ $bok = 0; $bfail = 0
 foreach ($k in ($BUDGET_TABS.Keys | Sort-Object)) {
     $gid = $BUDGET_TABS[$k]
     $url = "https://docs.google.com/spreadsheets/d/$BUDGET_ID/export?format=csv" + "&gid=$gid"
+    $tmp = Join-Path $budgetDir "$k.csv.tmp"
     try {
-        Invoke-WebRequest -Uri $url -OutFile (Join-Path $budgetDir "$k.csv") -UseBasicParsing -ErrorAction Stop
+        Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+        # an HTML page instead of CSV = no access; keep the previous good copy then
+        $head = [System.IO.File]::ReadAllText($tmp).TrimStart()
+        if ($head.StartsWith("<")) { throw "got HTML instead of CSV (no access?)" }
+        Move-Item -Force $tmp (Join-Path $budgetDir "$k.csv")
         Write-Host "[budget/$k] OK" -ForegroundColor Green
         $bok++
     } catch {
         Write-Host "[budget/$k] ERROR: $_" -ForegroundColor Red
+        Remove-Item -Force $tmp -ErrorAction SilentlyContinue
         $bfail++
     }
 }
 if ($bfail -eq 0 -and $bok -gt 0) {
     Write-Host "Running build_budget.ps1..." -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot "build_budget.ps1")
+} else {
+    $failed += "budget"
 }
 
-# ---- F&B (Служба питания) — отдельная пара Google-таблиц, парсер на Python ----
-$PYTHON = 'C:\Users\CloudUser\AppData\Local\Programs\Python\Python312\python.exe'
+# ---- 3. F&B (restaurant KAEF): registry of monthly files, Python parser ----
 $buildFnb = Join-Path $PSScriptRoot "build_fnb.py"
 if ((Test-Path $PYTHON) -and (Test-Path $buildFnb)) {
     Write-Host "Running build_fnb.py..." -ForegroundColor Cyan
     & $PYTHON $buildFnb
+    if ($LASTEXITCODE -ne 0) { $failed += "fnb" }
 }
 
-# ---- СПА / Банный комплекс — отдельная Google-таблица (XLSX, все вкладки разом) ----
+# ---- 4. SPA / bath complex: one workbook, all monthly tabs (XLSX) ----
 $buildSpa = Join-Path $PSScriptRoot "build_spa.py"
 if ((Test-Path $PYTHON) -and (Test-Path $buildSpa)) {
     Write-Host "Running build_spa.py..." -ForegroundColor Cyan
     & $PYTHON $buildSpa
+    if ($LASTEXITCODE -ne 0) { $failed += "spa" }
 }
+
+Write-Host ""
+if ($failed.Count -gt 0) {
+    Write-Host ("FAILED steps: " + ($failed -join ", ")) -ForegroundColor Red
+    exit 1
+}
+Write-Host "All sources processed."
+exit 0
