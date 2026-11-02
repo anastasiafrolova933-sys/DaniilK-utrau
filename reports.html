@@ -343,6 +343,7 @@
     .card { min-height: auto; padding: 24px 20px; }
   }
 </style>
+<script src="js/secure.js?v=1"></script>
 </head>
 <body>
 
@@ -377,7 +378,7 @@
     </div>
     <div class="auth-field">
       <label for="pwd-input">Пароль</label>
-      <input type="password" id="pwd-input" placeholder="••••••••" autocomplete="current-password">
+      <input type="password" id="pwd-input" placeholder="••••••••" autocomplete="current-password" autocapitalize="off" spellcheck="false">
     </div>
     <div class="auth-error" id="auth-error">Неверный пароль</div>
     <button class="auth-btn" id="auth-btn">Войти</button>
@@ -653,16 +654,12 @@
   tick();
 })();
 
-/* ── Auth ── */
+/* ── Auth ── с 2026-11-02 пароль — ключ к зашифрованным данным (js/secure.js), а не сверка
+   с SHA-256 в коде страницы: хеш лежал в публичном репо, а отчёты без входа открывались по прямой ссылке. */
 (function () {
-  var HASH = '8c9c5ba27499d08dd6767368bdf521a00c296ab3ad1532a8d3897a01f98dc704';
-  var KEY  = 'utrau_ok';
-
-  function sha256(str) {
-    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(ab) {
-      return Array.from(new Uint8Array(ab)).map(b => b.toString(16).padStart(2,'0')).join('');
-    });
-  }
+  var input = document.getElementById('pwd-input');
+  var btn   = document.getElementById('auth-btn');
+  var err   = document.getElementById('auth-error');
 
   function showMain() {
     document.getElementById('auth-overlay').style.display = 'none';
@@ -670,37 +667,55 @@
     var now = new Date();
     document.getElementById('last-update').textContent =
       now.toLocaleDateString('ru', {day:'2-digit', month:'long', year:'numeric'});
+    UtrauSecure.markReady();
+  }
+
+  function showLogin() {
+    document.getElementById('main').style.display = 'none';
+    document.getElementById('auth-overlay').style.display = '';
+    input.focus();
+  }
+
+  function enter() {                    // пришли из отчёта без ключа — возвращаем туда
+    var next = UtrauSecure.next();
+    if (next) location.replace(next); else showMain();
+  }
+
+  function showError(text) {
+    err.textContent = text;
+    err.style.display = 'block';
+    input.value = '';
+    input.focus();
   }
 
   function tryAuth(pwd) {
-    sha256(pwd).then(function(h) {
-      if (h === HASH) {
-        localStorage.setItem(KEY, HASH);
-        showMain();
-      } else {
-        document.getElementById('auth-error').style.display = 'block';
-        document.getElementById('pwd-input').value = '';
-        document.getElementById('pwd-input').focus();
-      }
-    });
+    btn.disabled = true; btn.textContent = 'Проверяю…';
+    err.style.display = 'none';
+    UtrauSecure.login(pwd).then(function (ok) {
+      if (ok) enter(); else showError('Неверный пароль');
+    }, function () {
+      showError('Нет связи с сайтом — попробуйте ещё раз');
+    }).then(function () { btn.disabled = false; btn.textContent = 'Войти'; });
   }
 
-  window.logout = function() { localStorage.removeItem(KEY); location.reload(); };
+  window.logout = function() { UtrauSecure.logout(); location.reload(); };
 
-  if (localStorage.getItem(KEY) === HASH) { showMain(); return; }
-
-  document.getElementById('auth-btn').addEventListener('click', function() {
-    var pwd = document.getElementById('pwd-input').value;
-    if (pwd) tryAuth(pwd);
+  btn.addEventListener('click', function() {
+    if (input.value) tryAuth(input.value);
   });
-  document.getElementById('pwd-input').addEventListener('keydown', function(e) {
+  input.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && this.value) tryAuth(this.value);
   });
+
+  if (UtrauSecure.hasKey()) {
+    enter();
+    UtrauSecure.verify().then(function (ok) { if (ok === false) showLogin(); });   // сменили пароль
+  }
 })();
 </script>
 <script src="js/pwa.js"></script>
 <script src="notify.js"></script>
-<script src="js/freshness.js?v=1" data-report="portal"></script>
+<script src="js/freshness.js?v=2" data-report="portal"></script>
 
 </body>
 </html>

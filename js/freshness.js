@@ -1,5 +1,6 @@
 /* freshness.js — «Данные по …» и плашка «данные устарели» на портале Утрау.
-   Читает data/health.json (пишет scripts/check_health.py после ежедневной сборки).
+   Читает health.json (пишет scripts/check_health.py после ежедневной сборки); с 2026-11-02 на сайте
+   он зашифрован (data/enc/health.enc) и читается через js/secure.js после входа.
    Раньше в шапке отчётов стояло «Обновлено <время сборки>» — оно менялось каждый день,
    даже когда новых цифр не было больше двух месяцев, и устаревание никто не замечал.
    Подключение: <script src="js/freshness.js?v=1" data-report="finance|budget|fnb|spa|portal"></script> */
@@ -67,9 +68,12 @@
     });
   }
 
-  fetch('data/health.json', { cache: 'no-store' })
-    .then(function (res) { return res.ok ? res.json() : null; })
-    .then(function (h) {
+  // ждём вход и отрисовку отчёта: страница сама пишет «Обновлено …» и перетёрла бы «Данные по …»
+  if (!window.UtrauSecure) return;
+  UtrauSecure.ready
+    .then(function () { return UtrauSecure.load('health'); })
+    .then(function (text) {
+      var h = JSON.parse(text);
       if (!h || !h.reports) return;
       if (report === 'portal') applyPortal(h);
       else if (h.reports[report]) applyReport(h.reports[report], h.checked);

@@ -7,6 +7,9 @@
 # 2026-11-02: output of every step goes to data/update.log (was discarded with Out-Null, so
 # "no access to file" / "empty tab" never surfaced), check_health.py writes data/health.json
 # (data freshness for the portal + summary text for push / future Telegram bot).
+# 2026-11-02: the repo and the site are public, so only ENCRYPTED copies of the data go to git
+# (data/enc/, scripts/encrypt_data.py, key = PORTAL_PASSWORD in backend/.env). Plain data/*.js,
+# health.json and raw CSV stay on this PC (bot, push, checks) and are git-ignored.
 
 param([switch]$NoPush)
 
@@ -67,13 +70,18 @@ if (Test-Path $healthFile) {
 }
 Log ("Health: " + $overall + $tag)
 
+# 3. Encrypt data for the public site: data/*.js + health.json -> data/enc/*.enc (portal decrypts with the password)
+$ec = Run-Step "encrypt for site" { & $PYTHON (Join-Path $PSScriptRoot "encrypt_data.py") }
+if ($ec -ne 0) { Log "Encrypt FAILED (exit $ec) - the site keeps the previous data" }
+
 if ($NoPush) {
     Log "-NoPush: git and notifications skipped"
     Log "=== Auto-update done ==="
     exit 0
 }
 
-# 3. Commit & push if data changed
+# 4. Commit & push if data changed (plain data is git-ignored, so only data/enc goes out)
+$pushCode = -1      # -1 = nothing to push, 0 = pushed, 1 = push failed
 Push-Location $repo
 try {
     git add data/ 2>&1 | Out-Null
@@ -89,18 +97,26 @@ try {
         git push origin HEAD:master 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Log "Pushed to GitHub Pages"
+            $pushCode = 0
         } else {
             Log "Push FAILED (exit $LASTEXITCODE)"
+            $pushCode = 1
         }
     }
 } finally {
     Pop-Location
 }
 
-# 4. Notifications: daily digest + stale-data alert (push needs local chat server on :8768)
+# 5. Notifications: daily digest + stale-data alert (push needs local chat server on :8768)
 $notify = Join-Path $repo "backend\notify_push.py"
 if (Test-Path $notify) {
     $np = Run-Step "notify_push" { & $PYTHON $notify }
+}
+
+# 6. Telegram bot @Utrau1_bot: daily summary to approved subscribers + failure alert to admins
+$tg = Join-Path $repo "backend\notify_telegram.py"
+if (Test-Path $tg) {
+    $tc = Run-Step "telegram" { & $PYTHON $tg --daily --pipeline "download=$dl" "health=$hc" "encrypt=$ec" "push=$pushCode" }
 }
 
 Log "=== Auto-update done ==="

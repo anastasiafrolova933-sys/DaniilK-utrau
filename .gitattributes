@@ -1,0 +1,2 @@
+# Зашифрованные данные портала (scripts/encrypt_data.py) — двоичные: без перевода строк (core.autocrlf) и диффов
+data/enc/*.enc binary

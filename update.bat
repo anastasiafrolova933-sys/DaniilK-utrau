@@ -4,7 +4,8 @@ echo =====================================
 echo  Утрау — Обновление дашборда
 echo =====================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\download.ps1"
+rem 02.11.2026: полный прогон без публикации - скачать, собрать, проверить свежесть, зашифровать для сайта
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\auto_update.ps1" -NoPush
 echo.
-echo Готово! Откройте finance.html в браузере.
+echo Готово! Данные обновлены и зашифрованы (data\enc). На сайт их отправит конвейер в 10:00.
 pause

@@ -2,7 +2,9 @@
  * sw.js — Service Worker для PWA «Утрау».
  * Кэш статики (cache-first), HTML/JSON network-first, обработка push.
  */
-const CACHE_VERSION = 'utrau-v2-2026-07-24';
+// v3 (02.11.2026): данные на сайте теперь только зашифрованные (data/enc/) — новая версия
+// стирает с устройств кэш со старыми открытыми data/*.js
+const CACHE_VERSION = 'utrau-v3-2026-11-02';
 const STATIC_CACHE = 'utrau-static-' + CACHE_VERSION;
 const RUNTIME_CACHE = 'utrau-runtime-' + CACHE_VERSION;
 const BASE = '/DaniilK-utrau/';

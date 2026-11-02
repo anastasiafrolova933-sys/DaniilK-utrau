@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="data/budget_data.js"></script>
+<script src="js/secure.js?v=1" data-data="budget"></script>
 <style>
 :root{
   --bg:#080c08; --bg2:#0f1610; --surface:#131a13;
@@ -252,7 +252,8 @@ table.tree tr:hover td{background:rgba(255,255,255,.025);}
   </div>
 </main>
 
-<script>
+<!-- основной скрипт страницы: выполняется после расшифровки данных (js/secure.js) -->
+<script type="text/x-utrau">
 var RAW = window.UTRAU_BUDGET || {bdr:[],bdds:[],generated:''};
 var MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 var REV='#4fb8b0', COST='#e0a070', PROFIT='#7ec88a', PLAN='rgba(255,255,255,0.22)';
@@ -594,6 +595,6 @@ boot();
 <script src="js/pwa.js"></script>
 <script src="notify.js"></script>
 <script src="chat-widget.js" data-report="budget"></script>
-<script src="js/freshness.js?v=1" data-report="budget"></script>
+<script src="js/freshness.js?v=2" data-report="budget"></script>
 </body>
 </html>
