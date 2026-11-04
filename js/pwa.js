@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://incl-oem-recorders-pmc.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://hawaii-sees-mod-spin.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
