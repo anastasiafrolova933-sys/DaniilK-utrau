@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://ours-teachers-fundamentals-pichunter.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://subscription-typical-cons-freight.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
