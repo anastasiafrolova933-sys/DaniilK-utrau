@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://loved-sea-external-digital.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://weddings-trigger-counting-extreme.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
