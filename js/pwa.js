@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://weddings-trigger-counting-extreme.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://navigation-upcoming-sale-obligation.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
