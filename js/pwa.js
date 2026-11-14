@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://rom-mortality-releases-unnecessary.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://ensuring-gratuit-devel-significantly.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
