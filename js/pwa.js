@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://anonymous-dialog-bon-dragon.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://injuries-accommodate-referred-garcia.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
