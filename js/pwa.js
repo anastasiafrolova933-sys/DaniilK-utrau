@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://rides-closure-press-allowance.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://gotten-lodging-permitted-coins.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
