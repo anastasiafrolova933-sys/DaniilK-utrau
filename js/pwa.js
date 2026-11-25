@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://passenger-picked-identify-towns.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://cycle-inflation-partition-launches.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
