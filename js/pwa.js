@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
   var SW_PATH = 'sw.js';
-  var DEFAULT_SERVER = 'https://showcase-len-privileges-singing.trycloudflare.com';
+  var DEFAULT_SERVER = 'https://works-alternatives-serial-emails.trycloudflare.com';
   var serverUrl = null;
   var vapidKey = null;
   var installPrompt = null;
